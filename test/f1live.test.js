@@ -66,7 +66,7 @@ const O = require('../openf1');
   const demo = createDemoSource();
   const feed = new LiveFeed({ source: demo, clock: () => now, emit, mode: 'replay', speed: 1, startAt: BASE, loop: true });
   await feed.start({ autoTick: false });
-  assert.strictEqual(events[0].type, 'session'); assert.strictEqual(events[0].drivers.length, 20); assert.ok(events[0].session.demo);
+  assert.strictEqual(events[0].type, 'session'); assert.strictEqual(events[0].drivers.length, 22); assert.ok(events[0].session.demo);
   const outlineEv = events.find((e) => e.type === 'outline'); assert.ok(outlineEv && outlineEv.path.length === 360 && outlineEv.kind === 'lap');
   assert.ok(outlineEv.path.every(([x, y]) => x >= 0 && y >= 0 && x <= outlineEv.view.w && y <= outlineEv.view.h), 'outline fits its view box');
   const tickTo = async (sec, step = 250) => { const target = now + sec * 1000; while (now < target) { now += step; await feed.tick(); } };
@@ -74,9 +74,9 @@ const O = require('../openf1');
 
   await tickTo(2);
   const f0 = events.filter((e) => e.type === 'frame').at(-1);
-  assert.strictEqual(f0.cars.length, 20); assert.ok(f0.cars.every((c) => c.x >= 0 && c.x <= outlineEv.view.w && c.y >= 0 && c.y <= outlineEv.view.h));
+  assert.strictEqual(f0.cars.length, 22); assert.ok(f0.cars.every((c) => c.x >= 0 && c.x <= outlineEv.view.w && c.y >= 0 && c.y <= outlineEv.view.h));
   const withTower = events.filter((e) => e.type === 'frame' && e.tower).at(-1);
-  assert.strictEqual(withTower.tower[0].pos, 1); assert.strictEqual(withTower.tower.length, 20); assert.strictEqual(withTower.tower[0].n, DRIVERS[0].n, 'pole sitter leads at the start');
+  assert.strictEqual(withTower.tower[0].pos, 1); assert.strictEqual(withTower.tower.length, 22); assert.strictEqual(withTower.tower[0].n, DRIVERS[0].n, 'pole sitter leads at the start');
 
   await tickTo(35); // t = 37 s: yellows at 8-22 s, SC at 30 s
   const seq = flags().map((f) => f.mode);

@@ -1,5 +1,5 @@
 'use strict';
-// A scripted, offline "race" with the same interface as the OpenF1 source: 20 cars on a made-up circuit and a timeline that
+// A scripted, offline "race" with the same interface as the OpenF1 source: 22 cars on a made-up circuit and a timeline that
 // walks through every track status (yellows, safety car, VSC, red flag, chequered). Lets you try the Live tab and the ambient
 // lights without waiting for a real session.
 const BASE = Date.UTC(2026, 0, 1);
@@ -10,9 +10,10 @@ const DRIVERS = [
   ['LEC', 'Charles Leclerc', 'Ferrari', '#E8002D'], ['HAM', 'Lewis Hamilton', 'Ferrari', '#E8002D'], ['RUS', 'George Russell', 'Mercedes', '#27F4D2'],
   ['ANT', 'Kimi Antonelli', 'Mercedes', '#27F4D2'], ['ALO', 'Fernando Alonso', 'Aston Martin', '#229971'], ['STR', 'Lance Stroll', 'Aston Martin', '#229971'],
   ['GAS', 'Pierre Gasly', 'Alpine', '#FF87BC'], ['COL', 'Franco Colapinto', 'Alpine', '#FF87BC'], ['ALB', 'Alexander Albon', 'Williams', '#64C4FF'],
-  ['SAI', 'Carlos Sainz', 'Williams', '#64C4FF'], ['TSU', 'Yuki Tsunoda', 'Red Bull', '#3671C6'], ['HAD', 'Isack Hadjar', 'Racing Bulls', '#6692FF'],
+  ['SAI', 'Carlos Sainz', 'Williams', '#64C4FF'], ['HAD', 'Isack Hadjar', 'Red Bull', '#3671C6'], ['LIN', 'Arvid Lindblad', 'Racing Bulls', '#6692FF'],
   ['LAW', 'Liam Lawson', 'Racing Bulls', '#6692FF'], ['BEA', 'Oliver Bearman', 'Haas', '#B6BABD'], ['OCO', 'Esteban Ocon', 'Haas', '#B6BABD'],
   ['HUL', 'Nico Hulkenberg', 'Audi', '#52E252'], ['BOR', 'Gabriel Bortoleto', 'Audi', '#52E252'],
+  ['PER', 'Sergio Perez', 'Cadillac', '#AAAAAD'], ['BOT', 'Valtteri Bottas', 'Cadillac', '#AAAAAD'],
 ].map((d, i) => ({ n: i + 1, code: d[0], name: d[1], team: d[2], color: d[3] }));
 
 // [seconds, category, flag, scope, sector, message]
