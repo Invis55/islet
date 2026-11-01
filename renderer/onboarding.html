@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://a.espncdn.com https://media.api-sports.io; style-src 'self'" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="onboarding.css" />
+</head>
+<body class="ob">
+  <svg class="sprite" width="0" height="0" aria-hidden="true">
+    <defs>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+      <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.4 2.5-1.3 4h-4.2l-1.3-4z"/><path d="M12 8V3.2M15.4 10.5l4.6-1.4M14.1 14.5l2.8 3.9M9.9 14.5l-2.8 3.9M8.6 10.5 4 9.1"/></symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V3.5"/><path d="M6 5c3-1.6 5 1.6 8 0s3.2-.6 4-1v9c-.8.4-1 .6-4 1.2s-5-1.8-8-.2"/></symbol>
+      <symbol id="i-spotify" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6.8 9.4c3.6-1.1 7.9-.8 10.9 1.1M7.4 12.7c3.1-.8 6.3-.5 8.8 1M8 15.9c2.4-.6 4.7-.4 6.6.7"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 21h4"/></symbol>
+      <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></symbol>
+    </defs>
+  </svg>
+
+  <div class="ob-card">
+    <div class="ob-top">
+      <div class="dots" id="dots"></div>
+      <button class="x" id="ob-close" aria-label="Close">×</button>
+    </div>
+
+    <div class="ob-body">
+      <!-- 0: welcome -->
+      <section class="ob-step on" data-step="0">
+        <div class="hero-pill"><img class="art sm" alt="" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCI+PGRlZnM+PGxpbmVhckdyYWRpZW50IGlkPSJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+PHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjMzBkMTU4Ii8+PHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMGE4NGZmIi8+PC9saW5lYXJHcmFkaWVudD48L2RlZnM+PHJlY3Qgd2lkdGg9IjY0IiBoZWlnaHQ9IjY0IiBmaWxsPSJ1cmwoI2cpIi8+PC9zdmc+" /><div class="eq on"><i></i><i></i><i></i><i></i></div></div>
+        <h1>Welcome to Islet</h1>
+        <p class="lead">A Dynamic Island for your PC. It lives at the top of your screen and brings your scores, music, calendar and alerts to one place. Setup takes about a minute, and every step is optional.</p>
+        <div class="feats">
+          <div class="feat"><div class="fi glass"><svg><use href="#i-ball"/></svg></div><div><b>Football and F1</b><span>Live scores, kick-off and goal alerts, standings, race countdowns</span></div></div>
+          <div class="feat"><div class="fi glass"><svg><use href="#i-spotify"/></svg></div><div><b>Spotify and music</b><span>Now playing, controls, playlists, and your Windows media</span></div></div>
+          <div class="feat"><div class="fi glass"><svg><use href="#i-spark"/></svg></div><div><b>Calendar and Claude Code</b><span>Next meeting with one-click Join, and Claude’s activity at a glance</span></div></div>
+        </div>
+      </section>
+
+      <!-- 1: football -->
+      <section class="ob-step" data-step="1">
+        <h2>Your football teams</h2>
+        <p>Follow up to 6 teams. You’ll get a live score pill while they play, plus kick-off, goal and full-time alerts.</p>
+        <div class="pills" id="ob-leagues"></div>
+        <div class="tiles" id="ob-teams"></div>
+        <details class="more" id="ob-key">
+          <summary>Faster live data with API-Football <span class="dim">(optional)</span></summary>
+          <div class="row">
+            <input id="ob-afkey" type="text" placeholder="Paste your API-Football key" spellcheck="false" />
+            <button class="pill glass prom" id="ob-afsave">Save</button>
+          </div>
+          <small>Without a key Islet uses ESPN, which works out of the box. A free API-Football key (100 requests a day, <a class="inline" id="ob-aflink">get one here</a>) is used first, and Islet falls back to ESPN if the quota runs low. <span id="ob-afstatus"></span></small>
+        </details>
+      </section>
+
+      <!-- 2: F1 -->
+      <section class="ob-step" data-step="2">
+        <h2>Your F1</h2>
+        <p>Pick up to 3 drivers and a team. They’re highlighted in the standings and shown on the Now tab.</p>
+        <div class="pills" id="ob-teams-f1"></div>
+        <div class="tiles three" id="ob-drivers"></div>
+      </section>
+
+      <!-- 3: spotify -->
+      <section class="ob-step" data-step="3">
+        <h2>Connect Spotify</h2>
+        <p>Control playback, like songs and start playlists from the island. Spotify needs a free developer app for this (one minute, and your data stays on your PC).</p>
+        <ol class="how">
+          <li><span>Open the <a class="inline" id="ob-spdash">Spotify developer dashboard</a> and create an app. Choose “Web API”.</span></li>
+          <li><span>Add this Redirect URI to the app:</span>
+            <div class="copybox"><code id="ob-redirect">http://127.0.0.1:47615/spotify/callback</code><button class="pill glass" id="ob-copy">Copy</button></div></li>
+          <li><span>Paste the app’s Client ID here and connect:</span>
+            <div class="row"><input id="ob-spclient" type="text" placeholder="Client ID" spellcheck="false" /><button class="pill glass prom" id="ob-spconnect">Connect</button></div></li>
+        </ol>
+        <div class="status-line" id="ob-spstatus"></div>
+        <small class="muted">Playback controls need Spotify Premium. Showing what’s playing works on any account.</small>
+      </section>
+
+      <!-- 4: extras -->
+      <section class="ob-step" data-step="4">
+        <h2>A few last things</h2>
+        <p>You can change any of this later in Settings.</p>
+        <div class="group">
+          <div class="item stack">
+            <div class="item-head"><span class="lbl">Calendar link (.ics)</span></div>
+            <div class="row"><input id="ob-ics" type="text" placeholder="Google or Outlook calendar link, optional" spellcheck="false" /><button class="pill glass prom" id="ob-icssave">Save</button></div>
+            <small>Google Calendar: Settings → your calendar → “Secret address in iCal format”.</small>
+          </div>
+          <div class="item"><span class="lbl">Claude Code</span><span class="status" id="ob-ccstatus">Checking…</span><button class="pill glass prom" id="ob-ccconnect">Connect</button></div>
+          <label class="item"><span class="lbl">Football and F1 alerts</span><input type="checkbox" class="switch" id="ob-alerts" /></label>
+          <label class="item"><span class="lbl">Show the notch when idle</span><input type="checkbox" class="switch" id="ob-notch" /></label>
+          <label class="item"><span class="lbl">Start with Windows</span><input type="checkbox" class="switch" id="ob-autostart" /></label>
+        </div>
+      </section>
+
+      <!-- 5: done -->
+      <section class="ob-step" data-step="5">
+        <h2>You’re all set</h2>
+        <p>Here’s what Islet will do for you.</p>
+        <div class="summary" id="ob-summary"></div>
+        <div class="tips">
+          <div><kbd>Hover</kbd> the top of your screen to open the panel</div>
+          <div><kbd>Click</kbd> the notch or the grabber to pin it open</div>
+          <div><kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>I</kbd> pins or unpins it from anywhere</div>
+          <div>Right-click the tray icon to change anything or run this setup again</div>
+        </div>
+      </section>
+    </div>
+
+    <div class="ob-foot">
+      <button class="pill glass" id="ob-back">Back</button>
+      <button class="link" id="ob-skip">Skip setup</button>
+      <span class="spacer"></span>
+      <button class="pill glass prom big" id="ob-next">Get started</button>
+    </div>
+  </div>
+  <script src="onboarding.js"></script>
+</body>
+</html>

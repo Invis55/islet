@@ -1,0 +1,306 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; img-src 'self' data: https://a.espncdn.com https://media.api-sports.io https://i.scdn.co https://mosaic.scdn.co https://image-cdn-ak.spotifycdn.com https://image-cdn-fa.spotifycdn.com; style-src 'self'" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <!-- SF-Symbols-style icon set (stroke icons, 24px grid) -->
+  <svg class="sprite" width="0" height="0" aria-hidden="true">
+    <defs>
+      <symbol id="i-now" viewBox="0 0 24 24"><path d="M4 10v4M8 6.5v11M12 3.5v17M16 8v8M20 10.5v3"/></symbol>
+      <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+      <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 21h4"/></symbol>
+      <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="17" rx="3.2"/><path d="M9 4.5h6v2.2a1.2 1.2 0 0 1-1.2 1.2h-3.6A1.2 1.2 0 0 1 9 6.7z"/></symbol>
+      <symbol id="i-note" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="3.5"/><path d="M8 9h8M8 13h8M8 17h4"/></symbol>
+      <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.4 2.5-1.3 4h-4.2l-1.3-4z"/><path d="M12 8V3.2M15.4 10.5l4.6-1.4M14.1 14.5l2.8 3.9M9.9 14.5l-2.8 3.9M8.6 10.5 4 9.1"/></symbol>
+      <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V3.5"/><path d="M6 5c3-1.6 5 1.6 8 0s3.2-.6 4-1v9c-.8.4-1 .6-4 1.2s-5-1.8-8-.2"/></symbol>
+      <symbol id="i-spotify" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6.8 9.4c3.6-1.1 7.9-.8 10.9 1.1M7.4 12.7c3.1-.8 6.3-.5 8.8 1M8 15.9c2.4-.6 4.7-.4 6.6.7"/></symbol>
+      <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 7h3c5 0 5.6 10 11 10h3M3 17h3c1.5 0 2.6-.5 3.6-1.4M14.5 8.2C15.4 7.5 16.4 7 17.8 7H20"/><path d="m18 4.5 2.5 2.5L18 9.5M18 14.5l2.5 2.5L18 19.5"/></symbol>
+      <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 11V9.5A2.5 2.5 0 0 1 6.5 7H19"/><path d="m16.5 4 3 3-3 3"/><path d="M20 13v1.5a2.5 2.5 0 0 1-2.5 2.5H5"/><path d="m7.5 20-3-3 3-3"/></symbol>
+      <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-8-4.7-8-10.6A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 8 2.7c0 5.9-8 10.6-8 10.6z"/></symbol>
+      <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9.5h3l4-3.5v12l-4-3.5H4z"/><path d="M15 9a4 4 0 0 1 0 6M17.5 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+      <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h8M18 7h2M4 12h2M12 12h8M4 17h9M19 17h1"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="12" r="2.2"/><circle cx="16" cy="17" r="2.2"/></symbol>
+    </defs>
+  </svg>
+
+  <div id="island" data-state="idle" data-notch="on">
+    <div class="shell">
+
+      <!-- compact: music (leading art, trailing equaliser, like the camera cut-out between them) -->
+      <div class="view" data-view="music-compact">
+        <img class="art sm" id="mc-art" alt="" />
+        <div class="eq"><i></i><i></i><i></i><i></i></div>
+      </div>
+
+      <!-- compact: live match of the followed team -->
+      <div class="view" data-view="match">
+        <img class="crest" id="lm-home-logo" alt="" />
+        <span class="lm-score" id="lm-score">ARS 0–0 CHE</span>
+        <img class="crest" id="lm-away-logo" alt="" />
+        <span class="lm-clock" id="lm-clock">LIVE</span>
+      </div>
+
+      <!-- alert -->
+      <div class="view" data-view="alert">
+        <div class="al-icon" id="al-icon">🔔</div>
+        <div class="al-text">
+          <div class="title" id="al-title"></div>
+          <div class="sub" id="al-body"></div>
+        </div>
+      </div>
+
+      <!-- Claude Code activity -->
+      <div class="view" data-view="claude">
+        <span class="spark">✳︎</span>
+        <span id="cl-text">Working…</span>
+        <span class="proj" id="cl-proj"></span>
+      </div>
+
+      <!-- permission request -->
+      <div class="view" data-view="permission">
+        <div class="pm-head"><span class="spark">✳︎</span><span id="pm-title">Claude wants permission</span></div>
+        <div class="pm-action" id="pm-action"></div>
+        <div class="pm-buttons">
+          <button id="pm-deny" class="glass deny">Deny</button>
+          <button id="pm-allow" class="glass prom allow">Allow</button>
+        </div>
+      </div>
+
+      <!-- the expanded panel -->
+      <div class="view" data-view="panel">
+        <header class="bar">
+          <nav class="tabs glass" id="tabs">
+            <i class="lens" id="lens"></i>
+            <button class="tab on" data-tab="now"><svg><use href="#i-now"/></svg><span>Now</span></button>
+            <button class="tab" data-tab="calendar"><svg><use href="#i-calendar"/></svg><span>Calendar</span></button>
+            <button class="tab" data-tab="alerts"><svg><use href="#i-bell"/></svg><span>Alerts</span><i class="badge" id="alerts-badge" hidden></i></button>
+            <button class="tab" data-tab="clipboard"><svg><use href="#i-clip"/></svg><span>Clipboard</span></button>
+            <button class="tab" data-tab="notes"><svg><use href="#i-note"/></svg><span>Notes</span></button>
+            <button class="tab" data-tab="spotify"><svg><use href="#i-spotify"/></svg><span>Spotify</span></button>
+            <button class="tab" data-tab="football"><svg><use href="#i-ball"/></svg><span>Football</span></button>
+            <button class="tab" data-tab="f1"><svg><use href="#i-flag"/></svg><span>F1</span></button>
+          </nav>
+          <span class="spacer"></span>
+          <span id="clock-time"></span>
+          <button class="round glass" data-tab="settings" aria-label="Settings"><svg><use href="#i-sliders"/></svg></button>
+        </header>
+
+        <div class="pages">
+          <!-- NOW -->
+          <section class="page on" data-page="now">
+            <div class="np">
+              <img class="art lg" id="mf-art" alt="" />
+              <div class="np-body">
+                <div class="np-top">
+                  <div class="mf-text">
+                    <div class="title" id="mf-title">Nothing playing</div>
+                    <div class="sub" id="mf-artist"></div>
+                  </div>
+                  <div class="eq small"><i></i><i></i><i></i><i></i></div>
+                </div>
+                <div class="progress">
+                  <span id="mf-pos">0:00</span>
+                  <div class="bar-track"><div id="mf-fill"></div></div>
+                  <span id="mf-dur">0:00</span>
+                </div>
+                <div class="controls">
+                  <button data-cmd="prev" class="glass" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM9.5 12 18 18V6z"/></svg></button>
+                  <button data-cmd="playpause" class="glass big" aria-label="Play/Pause">
+                    <svg id="icon-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                    <svg id="icon-pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+                  </button>
+                  <button data-cmd="next" class="glass" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="chips">
+              <div class="chip glass" id="chip-battery">
+                <svg class="batt" viewBox="0 0 28 14" aria-hidden="true"><rect x=".6" y=".6" width="23" height="12.8" rx="4" class="outline"/><rect id="batt-fill" x="2.2" y="2.2" width="20" height="9.6" rx="2.6"/><path d="M25.8 4.8v4.4" class="cap"/></svg>
+                <span id="batt-text">--</span>
+              </div>
+              <div class="chip glass grow" id="chip-meeting">
+                <svg class="ic"><use href="#i-calendar"/></svg><span id="meet-text" class="ellipsis">No upcoming meetings</span>
+                <button id="meet-join" class="join glass prom" hidden>Join</button>
+              </div>
+            </div>
+            <div class="chips">
+              <div class="chip glass grow" id="chip-fav"><svg class="ic"><use href="#i-ball"/></svg><span id="fav-text" class="ellipsis">Follow a team in the Football tab</span></div>
+              <div class="chip glass grow" id="chip-f1"><svg class="ic"><use href="#i-flag"/></svg><span id="f1-chip-text" class="ellipsis">Next F1 session</span></div>
+            </div>
+          </section>
+
+          <!-- CALENDAR -->
+          <section class="page" data-page="calendar">
+            <div class="list" id="cal-list"></div>
+            <div class="foot"><span id="cal-status"></span><button class="link" id="cal-refresh">↻ Refresh</button></div>
+          </section>
+
+          <!-- ALERTS -->
+          <section class="page" data-page="alerts">
+            <div class="list" id="al-list"></div>
+            <div class="foot"><span id="al-status"></span></div>
+          </section>
+
+          <!-- CLIPBOARD -->
+          <section class="page" data-page="clipboard">
+            <div class="clips" id="clip-list"></div>
+            <div class="foot"><span>Click to copy again · drag into any app</span><button class="link" id="clip-clear">Clear</button></div>
+          </section>
+
+          <!-- NOTES -->
+          <section class="page" data-page="notes">
+            <textarea id="note" placeholder="Quick note… saved automatically" spellcheck="false"></textarea>
+            <div class="foot"><span id="note-status">Saved</span></div>
+          </section>
+
+          <!-- SPOTIFY -->
+          <section class="page" data-page="spotify">
+            <div class="sp-card" id="sp-connect-card" hidden>
+              <svg class="sp-logo"><use href="#i-spotify"/></svg>
+              <div class="sp-card-title" id="sp-card-title">Connect Spotify</div>
+              <div class="sp-card-sub" id="sp-card-sub">Control playback, like songs and pick playlists from the island.</div>
+              <button class="pill glass prom" id="sp-card-btn">Set up</button>
+            </div>
+            <div class="sp-main" id="sp-main">
+              <div class="sp-top">
+                <img class="art lg" id="sp-art" alt="" />
+                <div class="sp-info">
+                  <div class="sp-head">
+                    <div class="mf-text"><div class="title" id="sp-title">Nothing playing</div><div class="sub" id="sp-artist"></div></div>
+                    <button class="round glass small" id="sp-like" aria-label="Like"><svg><use href="#i-heart"/></svg></button>
+                  </div>
+                  <div class="progress">
+                    <span id="sp-pos">0:00</span>
+                    <div class="bar-track seek" id="sp-seek"><div id="sp-fill"></div></div>
+                    <span id="sp-dur">0:00</span>
+                  </div>
+                  <div class="sp-row">
+                  <div class="controls sp-controls">
+                    <button class="glass small" id="sp-shuffle" aria-label="Shuffle"><svg><use href="#i-shuffle"/></svg></button>
+                    <button class="glass" id="sp-prev" aria-label="Previous"><svg viewBox="0 0 24 24"><path d="M6 6h2v12H6zM9.5 12 18 18V6z"/></svg></button>
+                    <button class="glass big" id="sp-play" aria-label="Play/Pause">
+                      <svg class="i-play" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                      <svg class="i-pause" viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>
+                    </button>
+                    <button class="glass" id="sp-next" aria-label="Next"><svg viewBox="0 0 24 24"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z"/></svg></button>
+                    <button class="glass small" id="sp-repeat" aria-label="Repeat"><svg><use href="#i-repeat"/></svg></button>
+                  </div>
+                  <div class="sp-vol">
+                    <svg class="ic"><use href="#i-speaker"/></svg>
+                    <input type="range" id="sp-volume" min="0" max="100" value="50" />
+                    <button class="devbtn glass" id="sp-device">No device</button>
+                  </div>
+                  </div>
+                </div>
+              </div>
+              <div class="strip-title">Your playlists</div>
+              <div class="strip" id="sp-playlists"></div>
+              <div class="menu glass-menu" id="sp-devices" hidden></div>
+            </div>
+            <div class="foot"><span id="sp-status"></span><button class="link" id="sp-refresh">↻ Refresh</button></div>
+          </section>
+
+          <!-- FOOTBALL -->
+          <section class="page" data-page="football">
+            <div class="subbar">
+              <div class="pills" id="fb-leagues"></div>
+              <div class="seg glass">
+                <button data-fbview="fixtures" class="on">Fixtures</button>
+                <button data-fbview="table">Table</button>
+              </div>
+            </div>
+            <div class="list" id="fb-list"></div>
+            <div class="foot"><span id="fb-status"></span><button class="link" id="fb-unfollow" hidden>Unfollow</button></div>
+          </section>
+
+          <!-- F1 -->
+          <section class="page" data-page="f1">
+            <div class="subbar">
+              <div class="seg glass wide">
+                <button data-f1view="schedule" class="on">Schedule</button>
+                <button data-f1view="drivers">Drivers</button>
+                <button data-f1view="teams">Teams</button>
+                <button data-f1view="last">Last race</button>
+              </div>
+              <span class="dim" id="f1-season"></span>
+            </div>
+            <div class="list" id="f1-list"></div>
+            <div class="foot"><span id="f1-status"></span><button class="link" id="f1-refresh">↻ Refresh</button></div>
+          </section>
+
+          <!-- SETTINGS -->
+          <section class="page" data-page="settings">
+            <div class="list settings">
+              <div class="group-title">Connections</div>
+              <div class="group">
+                <div class="item stack">
+                  <div class="item-head"><span class="lbl">Spotify</span><span class="status" id="sp-set-status">Not connected</span></div>
+                  <div class="row">
+                    <input id="set-spClient" type="text" placeholder="Spotify Client ID" spellcheck="false" />
+                    <button class="pill glass" id="set-spSave">Save</button>
+                    <button class="pill glass prom" id="sp-connect">Connect</button>
+                    <button class="pill glass" id="sp-disconnect" hidden>Disconnect</button>
+                  </div>
+                  <small>Create an app at developer.spotify.com/dashboard and add this Redirect URI: <b class="sel" id="sp-redirect">http://127.0.0.1:47615/spotify/callback</b></small>
+                </div>
+                <div class="item stack">
+                  <div class="item-head"><span class="lbl">Football data</span><span class="status" id="af-status">ESPN (no key needed)</span></div>
+                  <div class="row">
+                    <input id="set-afKey" type="text" placeholder="API-Football key (optional)" spellcheck="false" />
+                    <button class="pill glass prom" id="set-afSave">Save</button>
+                  </div>
+                  <small>With a key, scores and tables come from API-Football (free plan: 100 requests a day; Islet stays inside that and falls back to ESPN). <a class="inline" id="af-link">Get a key</a></small>
+                </div>
+                <div class="item stack">
+                  <div class="item-head"><span class="lbl">Calendar</span></div>
+                  <div class="row">
+                    <input id="set-ics" type="text" placeholder="https://calendar.google.com/…/basic.ics" spellcheck="false" />
+                    <button class="pill glass prom" id="set-ics-save">Save</button>
+                  </div>
+                  <small>Google Calendar: Settings → your calendar → “Secret address in iCal format”. Outlook: Settings → Calendar → Shared calendars → Publish → ICS.</small>
+                </div>
+                <div class="item">
+                  <span class="lbl">Claude Code</span>
+                  <span class="status" id="cc-status">Checking…</span>
+                  <button class="pill glass prom" id="cc-connect">Connect</button>
+                  <button class="pill glass" id="cc-disconnect" hidden>Disconnect</button>
+                </div>
+              </div>
+
+              <div class="group-title">Alerts</div>
+              <div class="group">
+                <label class="item"><span class="lbl">Football: kick-off, goals, full-time</span><input type="checkbox" class="switch" id="set-footballAlerts" /></label>
+                <label class="item"><span class="lbl">F1: session reminders</span><input type="checkbox" class="switch" id="set-f1Alerts" /></label>
+                <label class="item"><span class="lbl">Show Windows notifications as pop-ups</span><input type="checkbox" class="switch" id="set-popupFromNotifs" /></label>
+                <label class="item"><span class="lbl">Alert sounds</span><input type="checkbox" class="switch" id="set-sound" /></label>
+              </div>
+
+              <div class="group-title">Appearance</div>
+              <div class="group">
+                <label class="item"><span class="lbl">Show the notch when idle</span><input type="checkbox" class="switch" id="set-notch" /></label>
+                <label class="item"><span class="lbl">Music pill while something plays</span><input type="checkbox" class="switch" id="set-musicPill" /></label>
+              </div>
+
+              <div class="group-title">General</div>
+              <div class="group">
+                <label class="item"><span class="lbl">Keep clipboard history</span><input type="checkbox" class="switch" id="set-clipboard" /></label>
+                <label class="item"><span class="lbl">Start with Windows</span><input type="checkbox" class="switch" id="set-autostart" /></label>
+                <div class="item"><span class="lbl">Teams, drivers and setup</span><button class="pill glass" id="set-rerun">Run setup again</button></div>
+              </div>
+              <small class="tip">Tip: press <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>I</kbd> to pin the island open or closed from anywhere.</small>
+            </div>
+          </section>
+        </div>
+
+        <button class="grabber" id="grabber" aria-label="Pin the island open"><i></i></button>
+      </div>
+    </div>
+  </div>
+  <script src="app.js"></script>
+  <script src="panel.js"></script>
+  <script src="sports.js"></script>
+  <script src="spotify.js"></script>
+</body>
+</html>
