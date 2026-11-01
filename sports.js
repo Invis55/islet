@@ -128,9 +128,25 @@ function createFootball({ fetchFn, clock = Date.now, getKey = () => '' } = {}) {
   const af = createApiFootball({ fetchFn, getKey, clock });
   const AF_FIXTURES = 5 * MIN, ESPN_FIXTURES = 45000, AF_TABLE = 3 * HOUR, ESPN_TABLE = 30 * MIN;
 
+  // ESPN's scoreboard takes ?dates=YYYYMMDD. A YYYYMMDD-YYYYMMDD range works for some leagues/sports but is refused with a 400 for others,
+  // so try the range once and, if ESPN rejects it, fetch the days one by one (and remember not to ask for the range again).
+  let espnRangeRefused = false;
   const espnFixtures = async (league) => {
-    const url = `${ESPN}/site/v2/sports/soccer/${league}/scoreboard?dates=${ymd(clock() - 3 * DAY)}-${ymd(clock() + 7 * DAY)}&limit=300`;
-    return parseScoreboard(await getJson(url, fetchFn));
+    const base = `${ESPN}/site/v2/sports/soccer/${league}/scoreboard`;
+    if (!espnRangeRefused) {
+      try { return parseScoreboard(await getJson(`${base}?dates=${ymd(clock() - 3 * DAY)}-${ymd(clock() + 7 * DAY)}`, fetchFn)); } catch (e) {
+        if (!/answered 4\d\d/.test(e.message)) throw e; // network trouble is not a reason to change strategy
+        espnRangeRefused = true;
+      }
+    }
+    const days = [];
+    for (let d = -2; d <= 6; d++) days.push(ymd(clock() + d * DAY));
+    const res = await Promise.allSettled(days.map((d) => getJson(`${base}?dates=${d}`, fetchFn)));
+    const ok = res.filter((r) => r.status === 'fulfilled').map((r) => r.value);
+    if (!ok.length) throw res[0].reason;
+    const seen = new Set(), events = [];
+    for (const j of ok) for (const ev of (j && j.events) || []) if (!seen.has(ev.id)) { seen.add(ev.id); events.push(ev); }
+    return parseScoreboard({ events });
   };
   const espnTable = async (league) => parseStandings(await getJson(`${ESPN}/v2/sports/soccer/${league}/standings`, fetchFn));
 

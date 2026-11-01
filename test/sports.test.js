@@ -111,6 +111,32 @@ assert.deepStrictEqual(S.parseSchedule({}), []);
   assert.deepStrictEqual(fb1.drivers.rows, []);
   assert.ok(/drivers: .*503/.test(fb1.error) && /teams/.test(fb1.error), fb1.error); // partial failure is reported, not fatal
 
+  /* ---------- ESPN refuses the date range -> fall back to one request per day (and remember) ---------- */
+  {
+    const urls2 = [];
+    const day = (u) => new URL(u).searchParams.get('dates');
+    const fetch400 = async (url) => {
+      urls2.push(url);
+      if (!url.includes('/scoreboard')) return { ok: true, json: async () => standings };
+      const d = day(url);
+      if (d.includes('-')) return { ok: false, status: 400 };
+      const evs = d === '20261101' ? [scoreboard.events[0], scoreboard.events[1]] : d === '20261102' ? [scoreboard.events[1], scoreboard.events[2]] : [];
+      return { ok: true, json: async () => ({ events: evs }) };
+    };
+    const fb = S.createFootball({ fetchFn: fetch400, clock: () => NOW });
+    const r = await fb.fixtures('eng.1');
+    assert.strictEqual(r.src, 'espn');
+    assert.deepStrictEqual(r.items.map((m) => m.id).sort(), ['1', '2', '3'], 'days merged, duplicate event ids dropped');
+    assert.ok(urls2.some((u) => day(u) && day(u).includes('-')), 'tried the range first');
+    assert.ok(!urls2.some((u) => /limit=/.test(u)), 'no limit parameter');
+    assert.strictEqual(urls2.filter((u) => !day(u).includes('-')).length, 9, 'nine single-day requests');
+    urls2.length = 0; await fb.fixtures('eng.1', { maxAge: 0 });
+    assert.ok(!urls2.some((u) => day(u).includes('-')), 'does not ask for the range again');
+    // a network failure (no HTTP status) must not switch strategy
+    const fb2 = S.createFootball({ fetchFn: async () => { throw new Error('offline'); }, clock: () => NOW });
+    await assert.rejects(() => fb2.fixtures('eng.1'), /offline/);
+  }
+
   /* ---------- cache: fails loudly with no data, serves stale data when a refresh fails ---------- */
   {
     let now = 0, fail = true, calls = 0;
