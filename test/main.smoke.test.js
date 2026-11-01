@@ -170,6 +170,7 @@ const last = (ch) => [...sent].reverse().find((s) => s[0] === ch);
     return { ok: true, headers, json: async () => ({ errors: [], response: [{ fixture: { id: 1, timestamp: Math.floor(Date.now() / 1000) + 300, status: { short: 'NS' } },
       teams: { home: { id: 42, name: 'Arsenal', logo: 'h.png' }, away: { id: 49, name: 'Chelsea', logo: 'a.png' } }, goals: { home: null, away: null } }] }) };
   };
+  ipcOn['settings-update']({}, { modules: { sports: true } }); // sports is opt-in, so switch it on for these checks
   const fbBundle = await ipcHandle['football-get']({}, 'eng.1');
   assert.strictEqual(fbBundle.source, 'API-Football'); assert.strictEqual(afCalls[0].key, 'abcdef0123456789abcdef0123456789');
   assert.ok(afCalls.some((c) => c.u.includes('league=39')));

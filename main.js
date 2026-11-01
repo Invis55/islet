@@ -37,7 +37,7 @@ const DEFAULTS = {
   footballLeague: 'eng.1', favTeams: [], footballAlerts: true, f1Alerts: true, favDrivers: [], favConstructor: '',
   apiFootballKey: '', spotifyClientId: '', onboarded: false,
   f1Ambient: true, f1CalmLights: false, f1LiveWatch: true,
-  modules: { sports: true, focus: true, tasks: true }, nbaTeams: [], quietFocus: true,
+  modules: { sports: false, focus: true, tasks: true }, nbaTeams: [], quietFocus: true, readNotifications: true, // sports is opt-in
 };
 let settings = { ...DEFAULTS };
 const userFile = (n) => path.join(app.getPath('userData'), n);
@@ -158,6 +158,8 @@ function lineReader(stream, cb) {
 let notifFirst = true;
 const seenNotif = new Set();
 function startNotifications() {
+  if (notifProc) return;                                   // already reading
+  if (!settings.readNotifications) { notifState = { items: [], error: 'Notification reading is off. Turn it on in Settings → Features.', fresh: [] }; return; }
   if (process.platform !== 'win32') { notifState.error = 'Windows notifications are only available on Windows.'; return; }
   notifProc = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(__dirname, 'notifications.ps1')],
     { windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'] });
@@ -453,7 +455,7 @@ function cleanTeam(t) {
 
 function update(patch) {
   const prevIcs = settings.icsUrl, prevKey = settings.apiFootballKey;
-  for (const k of ['notch', 'musicPill', 'sound', 'popupFromNotifs', 'clipboard', 'footballAlerts', 'f1Alerts', 'f1Ambient', 'f1CalmLights', 'f1LiveWatch', 'quietFocus']) if (typeof patch[k] === 'boolean') settings[k] = patch[k];
+  for (const k of ['notch', 'musicPill', 'sound', 'popupFromNotifs', 'clipboard', 'footballAlerts', 'f1Alerts', 'f1Ambient', 'f1CalmLights', 'f1LiveWatch', 'quietFocus', 'readNotifications']) if (typeof patch[k] === 'boolean') settings[k] = patch[k];
   if (typeof patch.icsUrl === 'string') settings.icsUrl = patch.icsUrl.trim().slice(0, 2000);
   if (typeof patch.footballLeague === 'string' && sports.isLeague(patch.footballLeague)) settings.footballLeague = patch.footballLeague;
   if (typeof patch.apiFootballKey === 'string') {
@@ -508,6 +510,10 @@ function update(patch) {
   if (!settings.f1Ambient) ambientSet({ mode: 'off' });
   else if (live && liveCache.flag) ambientFor(liveCache.flag, false);
   if (live) { if (settings.f1LiveWatch && settings.modules.sports) live.startWatch(); else live.stopWatch(); }
+  if (typeof patch.readNotifications === 'boolean') {
+    if (settings.readNotifications) startNotifications();
+    else { if (notifProc) { notifProc.kill(); notifProc = null; } notifState = { items: [], error: 'Notification reading is off. Turn it on in Settings → Features.', fresh: [] }; send('notifs', notifState); }
+  }
   if (settings.icsUrl !== prevIcs) refreshCalendar();
   if (settings.apiFootballKey !== prevKey && football) { football.clear(); favChanged = true; }
   if (favChanged && watcher) {
@@ -565,7 +571,7 @@ app.whenReady().then(() => {
     persist();
   }
   clips = startClipboard({
-    dir: path.join(os.tmpdir(), 'islet-clips'),
+    dir: userFile('clips'),   // inside the app's own data folder, not the shared temp folder
     isEnabled: () => settings.clipboard,
     onChange: (items) => send('clips', items),
   });

@@ -19,7 +19,7 @@
   const seq = () => (settings.modules && settings.modules.sports === false ? NO_SPORTS_SEQ : SPORTS_SEQ);
 
   let step = 0;
-  let settings = { favTeams: [], favDrivers: [], favConstructor: '', nbaTeams: [], modules: { sports: true, focus: true, tasks: true } };
+  let settings = { favTeams: [], favDrivers: [], favConstructor: '', nbaTeams: [], modules: { sports: false, focus: true, tasks: true } };
   let league = 'eng.1';
   const fbData = {};
   let f1Data = null;
@@ -222,7 +222,7 @@
 
   /* ---------- live settings ---------- */
   api.onSettings((s) => {
-    settings = { favTeams: [], favDrivers: [], favConstructor: '', nbaTeams: [], ...s, modules: { sports: true, focus: true, tasks: true, ...(s.modules || {}) } };
+    settings = { favTeams: [], favDrivers: [], favConstructor: '', nbaTeams: [], ...s, modules: { sports: false, focus: true, tasks: true, ...(s.modules || {}) } };
     for (const k of Object.keys(fbData)) delete fbData[k].at; // re-annotate (served from the app's cache, no extra API calls)
     const id = seq()[step];
     if (id === 1) { renderTeams(); loadFootball(true); $('ob-afstatus').textContent = settings.apiFootballKeySet ? `Key saved (…${settings.apiFootballKeyTail}).` : ''; }

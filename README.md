@@ -1,99 +1,95 @@
 # Islet
 
-A Dynamic Island for Windows 11. A notch docked to the top of your screen that grows into live scores, music, alerts and a tabbed panel, styled after the iPhone Dynamic Island and Apple's Liquid Glass design.
+**A Dynamic Island for Windows.** Islet lives in a notch at the top of your screen. It shows what's playing, your next meeting, your focus timer, your tasks, and Claude Code's permission prompts, and it expands when you hover or click it. It's free, open source, and everything it does stays on your PC.
 
-## Install
-**From a release (easiest, about 10 seconds):** download `Islet-Setup.exe` from the repo's *Releases* page (always at `/releases/latest/download/Islet-Setup.exe`) and run it. It installs in one click and the first launch walks you through setup. Every push to `main` rebuilds and republishes it on GitHub, so there's nothing to build on your PC.
+![The Now tab: now playing, the next meeting with a Join button, and battery](docs/screenshots/panel-now.png)
 
-**From source:** `npm install`, then `npm start`. `npm run dist` builds the installer into `dist/`.
+## Download
 
-**Without GitHub:** `Install-Islet.bat` (a single self-contained file) builds and installs the same thing on your PC.
+**[⬇ Download Islet-Setup.exe](https://github.com/Invis55/islet/releases/latest/download/Islet-Setup.exe)** (Windows 10 or 11, 64-bit)
 
-The installer isn't code-signed, so Windows SmartScreen may say "unknown publisher": *More info → Run anyway*.
+1. Run `Islet-Setup.exe` and follow the installer.
+2. The first launch opens a short setup screen. Every step is optional.
 
-## First run
-A setup window asks what you care about. Every step is optional, and you can run it again from the tray icon (*Set up Islet…*) or Settings.
-1. **Football teams.** Follow up to 6 teams across any league.
-2. **Formula 1.** Pick up to 3 drivers and a team.
-3. **Spotify.** Connect your account.
-4. **Calendar, Claude Code, preferences.**
+Islet isn't code-signed yet, so Windows SmartScreen may say "unknown publisher". Choose **More info → Run anyway**. All releases are listed on the [Releases page](https://github.com/Invis55/islet/releases).
 
-## Using it
-Hover the notch (it swells, then opens) or click it to pin it open. Click the grabber bar or press **Ctrl+Alt+I** to pin or unpin from anywhere. Alerts, Claude activity, a music pill and a live-match pill appear on their own.
+## What's in it
 
-| Tab | |
+| Tab | What it does |
 |---|---|
-| **Now** | Music + controls, battery, next meeting (with Join), your team's next match, your F1 driver and next session |
-| **Calendar** | 7-day agenda from your `.ics` link; one-click Join for Meet, Zoom, Teams, Webex |
-| **Alerts** | WhatsApp, mail and other app notifications (reads the Windows notification database, read-only) |
-| **Clipboard** | Last 3 texts or screenshots; click to copy again, drag into any app |
-| **Notes** | Auto-saved quick note |
-| **Spotify** | Seek, like, shuffle, repeat, volume, switch device, start a playlist |
-| **Football** | Fixtures, live scores and tables for the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and Saudi Pro League |
-| **F1** | Next race countdown, every session in your local time, standings, last result |
-| **Tasks** | A checklist for today: add, tick off, double-click to rename, clear what's done. Kept on this PC |
-| **Focus** | Pomodoro timer (15/3, 25/5 or 50/10). The island shows a pill while a block runs, and you get a break alert. Non-urgent alerts during a work block are held and summarised at the break (switch off in Alerts) |
-| **NBA** | Today's games with live scores (your teams first), conference standings, and a team picker for up to five teams |
-| **Live** | Live F1: a real track map with every car moving on it, the running order with gaps, the current flag, and race-control messages. Replay the last race, jump to the next flag, or run the built-in demo |
+| **Now** | Now playing with controls (Windows media session, so it works with Spotify, YouTube and other players), battery, and your next meeting with a one-click **Join** |
+| **Calendar** | Your next 7 days from a calendar link (`.ics`) |
+| **Alerts** | Windows notifications, read-only, with an optional pop-up for each new one |
+| **Clipboard** | Your last few copied texts and screenshots. Click to copy again, or drag into another app |
+| **Notes** | A quick note that saves as you type |
+| **Tasks** | A checklist for today: add, tick off, double-click to rename, clear what's done |
+| **Focus** | A Pomodoro timer (15/3, 25/5 or 50/10). The island shows a pill while a block runs and alerts you at each break. Alerts that arrive during a work block are held and summarised at the break |
+| **Spotify** | Playback controls, playlists and devices (needs your own Spotify developer app; see below) |
 
-## Live F1 and ambient flag lights
+The island also shows **Claude Code** activity and lets you approve or deny its permission prompts.
 
-Timing comes from [OpenF1](https://openf1.org), which mirrors Formula 1's own feed. What you get depends on when you look:
+![The focus timer, with a 25-minute block ready to start](docs/screenshots/panel-focus.png)
 
-- **Replays** of any finished session, and the built-in demo race, are **free and need no account**.
-- **Live timing while a session is running** needs an OpenF1 **sponsor account (€9.90/month)**. OpenF1 treats data as live from 30 minutes before a session starts until 30 minutes after it ends, and only serves that window to sponsors. Formula 1 itself no longer publishes an open live feed — its timing service now answers `401` to everyone — so there is no free route to live data.
+![Tasks: add what you need to do, tick it off as you go](docs/screenshots/panel-tasks.png)
 
-Without an account Islet still notices a session running, says so, and **replays it automatically as soon as it finishes** (with an alert). Sign in under Settings → Connections → OpenF1 and it goes live by itself instead; the password is encrypted on your PC. Islet stays inside OpenF1's request limits either way (3/s and 30/min free, double that for sponsors).
+![The focus pill on the island while a block runs](docs/screenshots/island-focus.png)
 
-Track status also drives a glow along the top edge of your screen, plus a pill on the notch:
+## Optional: sports
 
-| Status | Light | Notch |
-| --- | --- | --- |
-| Yellow / double yellow | flashing amber | `Y` / `YY` with the sectors |
-| Safety car | steady amber, slowly breathing | `SC` |
-| Virtual safety car | slow amber pulse | `VSC` |
-| Red flag | steady red, slowly breathing | `RED` |
-| Back to green | one green flash | |
-| Chequered | checker bars, then fades | |
+Sports are **off by default**. Turn them on during setup, or in Settings → Features, to get:
 
-Settings → Appearance has **F1 ambient light** (off to disable) and **Calm lights** (steady glow, no flashing, for anyone sensitive to flicker). The light never takes mouse clicks. Try the **Demo** button in the Live tab to see every state.
+- **Football:** fixtures, live scores and tables for the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and Saudi Pro League, with alerts for kick-off, goals and full time.
+- **F1:** the next race countdown, every session in your local time, standings, and the last result. **Live** shows a track map and flag status during a session. Live timing needs a paid OpenF1 sponsor account, so replays and the built-in demo are the free route.
+- **NBA:** today's games with live scores, conference standings, and a team picker.
 
-## Choosing what you use
+![The NBA tab, with your teams first](docs/screenshots/panel-nba-optional.png)
 
-Sports, the focus timer and tasks are switched on or off in Settings → Features, and you choose them during setup. Turning a module off hides its tabs and stops its data: no sports requests are made while Sports is off. Music, calendar, clipboard, notes and notifications always stay on.
+Sports data comes from unofficial public sources and is for personal use. Islet isn't affiliated with the NBA, F1, the football leagues, or any sports data provider. F1 is a trademark of Formula One Licensing B.V.
 
-## Football data
-Islet uses **API-Football** when you add a key (Settings → Football data), and **ESPN's public feed** otherwise (no key needed).
+## Privacy
 
-The free API-Football plan allows 100 requests a day, so Islet is frugal: tables are cached for 3 hours, fixtures for 5 minutes, and it checks your followed teams hourly when nothing is close, every 1 to 2 minutes around kick-off. It reads the remaining quota from API-Football's response headers and switches to ESPN automatically when the quota runs low, when the key is rejected, or when your plan doesn't include the current season. Followed teams are matched by name across both providers, so switching mid-match doesn't lose your alerts.
+Everything Islet reads stays on your PC. Specifically:
 
-Followed teams get a live score pill while they play, and alerts for kick-off (15 minutes before and at the start), goals for and against, disallowed goals, half-time and full-time. F1 session reminders arrive 15 minutes before and at the start of each session.
+- **Media:** the Windows media session, to show what's playing.
+- **Notifications:** the Windows notification database, read-only, to fill the Alerts tab. Turn this off in Settings → Features.
+- **Clipboard:** kept in Islet's own data folder. Screenshots are deleted when they leave the list and on each start. Anything a password manager marks as sensitive is never recorded. Turn it off in Settings.
+- **Tasks and notes:** saved on your PC.
 
-## Spotify
-Needs a free Spotify developer app (so your listening data only ever goes between Spotify and your PC):
-1. Create an app at <https://developer.spotify.com/dashboard>.
-2. Add the Redirect URI `http://127.0.0.1:47615/spotify/callback` (Spotify allows `http` only for the `127.0.0.1` loopback address, not `localhost`).
-3. Paste the app's **Client ID** into Islet (setup wizard or Settings) and click **Connect**.
+Islet only contacts the internet for things you add: a calendar link, a Spotify account, or sports you turn on. Your calendar link is stored locally, so treat it like a password.
 
-Islet signs in with PKCE (no client secret) and keeps the tokens encrypted with Windows DPAPI. Showing what's playing works on any account; playback controls need Spotify Premium.
+**Claude Code:** Settings → Connect adds hook entries to `%USERPROFILE%\.claude\settings.json` and keeps your other settings. A backup is saved first. Disconnect removes the hooks again.
 
-## Other setup
-- **Calendar:** Settings → paste your calendar's `.ics` link (Google: *Secret address in iCal format*; Outlook: *Publish a calendar* → ICS). Treat it like a password.
-- **Alerts tab:** nothing to set up. Windows notifications can also be shown as pop-ups (Settings).
-- **Clipboard:** text stays in memory; screenshots are temporary PNGs deleted when they fall off the list. Content password managers flag as sensitive is never recorded.
-- **Claude Code:** Settings → **Connect** adds hook entries to `%USERPROFILE%\.claude\settings.json` (other settings are kept, a backup is saved). Restart Claude Code afterwards. Permission prompts can be approved from the island.
-- **Your own alerts:** `POST http://127.0.0.1:47615/notify` with `{"title","body","icon","duration"}`.
+## Settings
 
-## Design
-Glass only on controls and navigation (tab bar, buttons, chips, segmented controls), flat content, one glass tab bar whose selection lens slides between tabs, a pointer-following specular highlight, concentric corners, spring motion, tinted prominent buttons, and iOS-style grouped settings with switches. Respects Windows' *reduce animations* and high-contrast settings. Windows can't blur the desktop behind a transparent window, so the glass is drawn as a material rather than true refraction.
+- **Features:** turn Sports, the Focus timer, Tasks and notification reading on or off.
+- **Appearance:** the notch when idle, music pill, F1 ambient light and calm lights.
+- **Connections:** Spotify, OpenF1, calendar and Claude Code.
+- **Alerts and General:** pop-ups, sounds, clipboard history, and start with Windows.
 
-Type is **Inter** (bundled, SIL Open Font License, `renderer/fonts/LICENSE-Inter.txt`), the closest open match to San Francisco, which Apple doesn't license for Windows apps.
+## Spotify (optional)
 
-## Development
-`npm test` runs the automated tests (no Electron or Windows needed). Every push to `main` makes GitHub Actions run the tests, build `Islet-Setup.exe` on a Windows runner and publish it to a Release for the version in `package.json` (bump it for a new release).
+Spotify's developer rules require your own app. Create one at [developer.spotify.com/dashboard](https://developer.spotify.com/dashboard), add the redirect URI `http://127.0.0.1:47615/spotify/callback`, and paste the Client ID under Settings → Connections. Playback controls need Spotify Premium.
+
+## Build from source
+
+```
+npm install
+npm start        # run it
+npm test         # the automated tests (no Windows or Electron needed)
+npm run dist     # build dist/Islet-Setup.exe
+```
+
+Every push to `main` runs the tests on GitHub and publishes a new `Islet-Setup.exe` Release for the version in `package.json`.
+
+To regenerate the screenshots after a UI change: `python scripts/make-screenshots.py`. They're rendered from the real interface with sample data.
 
 ## Known limits
-- Developed without a Windows machine to hand: the logic and UI are covered by tests and screenshots, but these can only be proven on Windows: the media bridge (`media.ps1`), the notification reader (`notifications.ps1`), the Claude Code hook (`hook.ps1`), the live football/F1/Spotify services, and OpenF1 live access and its sign-in (the free replay path is verified against the real API), and dragging a screenshot out of the panel. Errors show in the relevant tab.
-- The Alerts tab reads an undocumented Windows database and ESPN's feed is unofficial. Either could change.
-- Spotify's Web API has been changing; if a control stops working, Settings → Spotify shows the reason.
-- Primary monitor only.
+
+- The Windows-only parts (`media.ps1`, `notifications.ps1` and `hook.ps1`) have been tested with automated tests and in a sandbox, but not yet on a real Windows PC. Please report anything that doesn't work.
+- Islet's sports and Spotify features depend on public services that can change without notice.
+- The app shows the primary monitor only.
+- Dragging a screenshot out of the Clipboard tab works on Windows only.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE). Islet is provided as is, with no warranty.

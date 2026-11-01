@@ -29,9 +29,11 @@
     if (box) box.addEventListener('change', (e) => window.islet.updateSettings({ modules: { [name]: e.target.checked } }));
   }
 
+  const readN = $('set-readNotifications');
+  if (readN) readN.addEventListener('change', (e) => window.islet.updateSettings({ readNotifications: e.target.checked }));
   const quiet = $('set-quietFocus');
   if (quiet) quiet.addEventListener('change', (e) => window.islet.updateSettings({ quietFocus: e.target.checked }));
 
   window.Modules = { apply };
-  window.Panel.register('*', { onSettings(s) { apply(s.modules); if (quiet) quiet.checked = s.quietFocus !== false; } });
+  window.Panel.register('*', { onSettings(s) { apply(s.modules); if (quiet) quiet.checked = s.quietFocus !== false; if (readN) readN.checked = s.readNotifications !== false; } });
 })();

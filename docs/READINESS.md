@@ -1,6 +1,8 @@
 # Islet: readiness for sale
 
-Status: **not ready to sell as currently built.** The app works, and the free and personal-use path is solid. The blockers are licences for the data and integrations the sports features depend on. Engineering can't fix those; a business decision can.
+Status: **v1.0.0 ships free and open source (MIT), with sports off by default.** That path is ready. The notes below still apply if you ever want to sell it.
+
+The original status was: **not ready to sell as built.** The app works, and the free and personal-use path is solid. The blockers are licences for the data and integrations the sports features depend on. Engineering can't fix those; a business decision can.
 
 This is a summary of the public terms I could find, not legal advice. Have a lawyer read the sources before you rely on any of this.
 
