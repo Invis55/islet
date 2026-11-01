@@ -22,6 +22,7 @@ let currentAlert = null;
 let alertTimer = null;
 let claude = null;            // { text, project }
 let live = null;              // live match of the followed team
+let flag = null;              // F1 track status while it is a hazard: yellow, SC, VSC, red
 let claudeTimer = null;
 const permissions = [];       // pending permission requests
 
@@ -33,6 +34,7 @@ function resolveState() {
   if (permissions.length) return 'permission';
   if (currentAlert) return 'alert';
   if (panelWanted()) return 'panel';
+  if (flag) return 'flag';
   if (claude) return 'claude';
   if (live && settings.favTeam) return 'match';
   if (media.active && media.playing && settings.musicPill) return 'music-compact';
@@ -249,6 +251,21 @@ function updateLive() {
   }
 }
 window.islet.onLive((m) => { live = m; updateLive(); render(); });
+window.islet.onF1Live((e) => {
+  if (!e) return;
+  if (e.type === 'session' || e.type === 'stopped') flag = null;
+  if (e.type !== 'flag') { if (e.type === 'session' || e.type === 'stopped') render(); return; }
+  const hazard = ['yellow', 'double', 'sc', 'sc-end', 'vsc', 'vsc-end', 'red'].includes(e.mode);
+  flag = hazard ? e : null;
+  if (flag) {
+    const v = document.querySelector('[data-view="flag"]');
+    v.dataset.mode = e.mode;
+    $('fl-sign').textContent = e.sign || '';
+    $('fl-label').textContent = e.label || '';
+    $('fl-lap').textContent = e.lap != null ? `Lap ${e.lap}` : '';
+  }
+  render();
+});
 
 /* ---------- settings + shared API for panel.js ---------- */
 window.islet.onSettings((s) => { settings = s; render(); if (window.Panel) window.Panel.onSettings(s); });

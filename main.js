@@ -11,6 +11,7 @@ const sports = require('./sports');
 const { annotate, sameName } = require('./teams');
 const { createSpotify } = require('./spotify');
 const claudeHooks = require('./claudehooks');
+const { createLiveManager } = require('./f1live');
 
 const PORT = Number(process.env.ISLET_PORT) || 47615;
 const WIN_W = 700;
@@ -35,6 +36,7 @@ const DEFAULTS = {
   notch: true, musicPill: true, sound: true, popupFromNotifs: false, clipboard: true, icsUrl: '',
   footballLeague: 'eng.1', favTeams: [], footballAlerts: true, f1Alerts: true, favDrivers: [], favConstructor: '',
   apiFootballKey: '', spotifyClientId: '', onboarded: false,
+  f1Ambient: true, f1CalmLights: false, f1LiveWatch: true,
 };
 let settings = { ...DEFAULTS };
 const userFile = (n) => path.join(app.getPath('userData'), n);
@@ -51,7 +53,8 @@ const broadcast = (ch, payload) => { for (const w of BrowserWindow.getAllWindows
 // The API key never goes to the renderer, only whether one is set and its last 4 characters.
 const publicSettings = () => {
   const { apiFootballKey, ...rest } = settings;
-  return { ...rest, apiFootballKeySet: !!apiFootballKey, apiFootballKeyTail: apiFootballKey ? apiFootballKey.slice(-4) : '', autostart: app.getLoginItemSettings().openAtLogin };
+  const oc = loadOpenF1Creds();
+  return { ...rest, openf1User: oc ? oc.user : '', apiFootballKeySet: !!apiFootballKey, apiFootballKeyTail: apiFootballKey ? apiFootballKey.slice(-4) : '', autostart: app.getLoginItemSettings().openAtLogin };
 };
 
 function loadSettings() {
@@ -80,7 +83,7 @@ function createWindow() {
     skipTaskbar: true, hasShadow: false, focusable: false, show: false, alwaysOnTop: true,
     webPreferences: { preload: path.join(__dirname, 'preload.js'), autoplayPolicy: 'no-user-gesture-required' },
   });
-  win.setAlwaysOnTop(true, 'screen-saver');
+  win.setAlwaysOnTop(true, 'screen-saver', 1); // above the ambient light window
   win.setVisibleOnAllWorkspaces(true);
   win.setIgnoreMouseEvents(true, { forward: true }); // click-through until the pointer is over the island
   positionWindow();
@@ -88,7 +91,7 @@ function createWindow() {
   win.once('ready-to-show', () => win.showInactive());
   win.webContents.on('did-finish-load', pushAll);
   win.on('blur', () => win.setFocusable(false)); // only focusable while you type in Notes / Settings
-  screen.on('display-metrics-changed', () => win && positionWindow());
+  screen.on('display-metrics-changed', () => { if (win) positionWindow(); if (ambientWin && !ambientWin.isDestroyed()) ambientWin.setBounds(ambientBounds()); });
 }
 
 function pushAll() {
@@ -97,6 +100,7 @@ function pushAll() {
   send('notifs', { ...notifState, fresh: [] });
   send('live', liveMatch);
   send('summary', summary);
+  for (const e of [liveCache.session, liveCache.outline, liveCache.flag, liveCache.status]) if (e) send('f1live', e);
   if (clips) send('clips', clips.items());
 }
 
@@ -226,6 +230,101 @@ function startBridge() {
   bridge.listen().catch((e) => console.error('Islet bridge failed to start:', e.message));
 }
 
+/* ---------- OpenF1 account (optional, encrypted) ---------- */
+function loadOpenF1Creds() {
+  try {
+    const raw = fs.readFileSync(userFile('openf1.dat'), 'utf8');
+    const c = JSON.parse(safeStorage && safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(raw, 'base64')) : raw);
+    return c && typeof c.user === 'string' && typeof c.pass === 'string' ? c : null;
+  } catch { return null; }
+}
+function saveOpenF1Creds(c) {
+  const f = userFile('openf1.dat');
+  try {
+    if (!c) { fs.rmSync(f, { force: true }); return; }
+    const json = JSON.stringify({ user: c.user, pass: c.pass });
+    fs.writeFileSync(f, safeStorage && safeStorage.isEncryptionAvailable() ? safeStorage.encryptString(json).toString('base64') : json);
+  } catch { /* ignore */ }
+}
+
+/* ---------- ambient light: a click-through glow along the top edge of the screen ---------- */
+let ambientWin = null, ambientHide = null;
+function ambientBounds() { const d = screen.getPrimaryDisplay(); return { x: d.bounds.x, y: d.bounds.y, width: d.bounds.width, height: 260 }; }
+function ensureAmbient() {
+  if (ambientWin && !ambientWin.isDestroyed()) return ambientWin;
+  ambientWin = new BrowserWindow({
+    ...ambientBounds(), transparent: true, frame: false, resizable: false, movable: false, skipTaskbar: true, hasShadow: false,
+    focusable: false, show: false, alwaysOnTop: true,
+    webPreferences: { preload: path.join(__dirname, 'preload.js'), backgroundThrottling: false },
+  });
+  ambientWin.setAlwaysOnTop(true, 'screen-saver', 0);
+  ambientWin.setVisibleOnAllWorkspaces(true);
+  ambientWin.setIgnoreMouseEvents(true);
+  ambientWin.loadFile(path.join(__dirname, 'renderer', 'ambient.html'));
+  return ambientWin;
+}
+function ambientSet(msg) {
+  clearTimeout(ambientHide);
+  if (msg.mode === 'off') { if (ambientWin && !ambientWin.isDestroyed() && ambientWin.isVisible()) { ambientWin.webContents.send('ambient', msg); ambientHide = setTimeout(() => ambientWin && !ambientWin.isDestroyed() && ambientWin.hide(), 900); } return; }
+  const w = ensureAmbient();
+  w.setBounds(ambientBounds());
+  const go = () => { w.webContents.send('ambient', { ...msg, calm: !!settings.f1CalmLights }); if (!w.isVisible()) w.showInactive(); };
+  if (w.webContents.isLoading()) w.webContents.once('did-finish-load', go); else go();
+  // transient effects hide themselves once they have played
+  const life = msg.pulse ? 3600 : msg.mode === 'chequered' ? 14000 : 0;
+  if (life) ambientHide = setTimeout(() => { ambientSet({ mode: 'off' }); }, life);
+}
+function ambientFor(flag, pulse) {
+  if (!settings.f1Ambient) return;
+  if (flag.mode === 'green') { if (pulse) ambientSet({ mode: 'green', pulse: true }); else ambientSet({ mode: 'off' }); return; }
+  ambientSet({ mode: flag.mode });
+}
+
+/* ---------- live F1: track map, flags, ambient light ---------- */
+let live = null;
+const liveCache = { session: null, outline: null, flag: null, status: null };
+function onLiveEvent(e) {
+  if (e.type === 'session') { liveCache.session = e; liveCache.outline = null; liveCache.flag = null; liveCache.status = null; }
+  else if (e.type === 'outline') liveCache.outline = e;
+  else if (e.type === 'flag') { liveCache.flag = e; ambientFor(e, e.pulseGreen); }
+  else if (e.type === 'status' || e.type === 'idle') liveCache.status = e;
+  else if (e.type === 'stopped') { liveCache.session = liveCache.outline = liveCache.flag = null; liveCache.status = e; ambientSet({ mode: 'off' }); }
+  send('f1live', e);
+}
+function startLive() {
+  live = createLiveManager({
+    fetchFn: (u, o) => net.fetch(u, o), getCreds: loadOpenF1Creds, emit: onLiveEvent,
+    onAlert: (a) => { if (settings.f1Alerts) send('alert', { ...a, duration: 6000 }); },
+  });
+  if (settings.f1LiveWatch) live.startWatch();
+}
+ipcMain.handle('f1live-do', async (_e, cmd) => {
+  if (!live || !cmd || typeof cmd.a !== 'string') return { ok: false };
+  try {
+    switch (cmd.a) {
+      case 'replay': await live.replay(['latest', 'race', 'qualifying', 'sprint'].includes(cmd.kind) ? cmd.kind : 'latest'); break;
+      case 'demo': await live.demo(); break;
+      case 'stop': live.stop(); break;
+      case 'speed': if ([1, 4, 16].includes(cmd.x)) live.setSpeed(cmd.x); break;
+      case 'jump': return { ok: live.jumpNextFlag() };
+      case 'watch': await live.watchOnce(); break;
+      default: return { ok: false };
+    }
+    return { ok: true };
+  } catch (e) { const msg = (e && e.message) || String(e); onLiveEvent({ type: 'status', error: msg, kind: e && e.kind }); return { ok: false, error: msg }; }
+});
+ipcMain.handle('f1live-login', async (_e, c) => {
+  const user = str(c && c.user, 160).trim(), pass = str(c && c.pass, 200);
+  if (!user || !pass || /\s/.test(user)) return { ok: false, error: 'Enter the email and password of your OpenF1 account' };
+  saveOpenF1Creds({ user, pass });
+  live.auth.forget();
+  try { await live.auth.login(); } catch (e) { saveOpenF1Creds(null); live.auth.forget(); broadcast('settings', publicSettings()); return { ok: false, error: e.message }; }
+  broadcast('settings', publicSettings());
+  live.watchOnce();
+  return { ok: true };
+});
+ipcMain.handle('f1live-logout', () => { saveOpenF1Creds(null); if (live) live.auth.forget(); broadcast('settings', publicSettings()); return { ok: true }; });
+
 /* ---------- football + F1 ---------- */
 function startSports() {
   const fetchFn = (u, o) => net.fetch(u, o);
@@ -314,7 +413,7 @@ function cleanTeam(t) {
 
 function update(patch) {
   const prevIcs = settings.icsUrl, prevKey = settings.apiFootballKey;
-  for (const k of ['notch', 'musicPill', 'sound', 'popupFromNotifs', 'clipboard', 'footballAlerts', 'f1Alerts']) if (typeof patch[k] === 'boolean') settings[k] = patch[k];
+  for (const k of ['notch', 'musicPill', 'sound', 'popupFromNotifs', 'clipboard', 'footballAlerts', 'f1Alerts', 'f1Ambient', 'f1CalmLights', 'f1LiveWatch']) if (typeof patch[k] === 'boolean') settings[k] = patch[k];
   if (typeof patch.icsUrl === 'string') settings.icsUrl = patch.icsUrl.trim().slice(0, 2000);
   if (typeof patch.footballLeague === 'string' && sports.isLeague(patch.footballLeague)) settings.footballLeague = patch.footballLeague;
   if (typeof patch.apiFootballKey === 'string') {
@@ -350,6 +449,9 @@ function update(patch) {
     app.setLoginItemSettings({ openAtLogin: patch.autostart, path: process.execPath, args: app.isPackaged ? [] : [app.getAppPath()] });
   }
   saveSettings();
+  if (!settings.f1Ambient) ambientSet({ mode: 'off' });
+  else if (live && liveCache.flag) ambientFor(liveCache.flag, false);
+  if (live) { if (settings.f1LiveWatch) live.startWatch(); else live.stopWatch(); }
   if (settings.icsUrl !== prevIcs) refreshCalendar();
   if (settings.apiFootballKey !== prevKey && football) { football.clear(); favChanged = true; }
   if (favChanged && watcher) {
@@ -417,6 +519,7 @@ app.whenReady().then(() => {
   startMedia();
   startNotifications();
   startSports();
+  startLive();
   buildTray();
   // Ctrl+Alt+I pins the island open / closed from anywhere
   try { globalShortcut.register('CommandOrControl+Alt+I', () => send('toggle-pin')); } catch { /* shortcut taken by another app */ }
@@ -428,6 +531,7 @@ app.on('window-all-closed', (e) => e.preventDefault());
 app.on('will-quit', () => {
   clearInterval(calendarTimer);
   clearInterval(sportsTimer);
+  if (live) { live.stopWatch(); live.stop(); }
   try { globalShortcut.unregisterAll(); } catch { /* ignore */ }
   if (mediaProc) mediaProc.kill();
   if (notifProc) notifProc.kill();

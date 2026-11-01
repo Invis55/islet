@@ -23,12 +23,12 @@ const noop = () => {};
 class FakeWin {
   constructor(opts) {
     this.opts = opts; this.handlers = {}; this.destroyed = false;
-    this.webContents = { on: noop, send: (c, p) => sent.push([c, p]), startDrag: noop };
+    this.webContents = { on: noop, once: noop, isLoading: () => false, send: (c, p) => sent.push([c, p]), startDrag: noop };
     FakeWin.all.push(this);
   }
-  setAlwaysOnTop() {} setVisibleOnAllWorkspaces() {} setIgnoreMouseEvents() {} setBounds() {} loadFile() {} once() {}
+  setAlwaysOnTop() {} setVisibleOnAllWorkspaces() {} setIgnoreMouseEvents() {} setBounds() {} loadFile(f) { this.url = f; } once() {}
   on(ev, cb) { this.handlers[ev] = cb; }
-  showInactive() {} show() {} isDestroyed() { return this.destroyed; } setFocusable(v) { this.focusable = v; } focus() { this.focused = true; }
+  showInactive() { this.visible = true; } hide() { this.visible = false; } isVisible() { return !!this.visible; } show() {} isDestroyed() { return this.destroyed; } setFocusable(v) { this.focusable = v; } focus() { this.focused = true; }
   close() { this.destroyed = true; FakeWin.all = FakeWin.all.filter((w) => w !== this); if (this.handlers.closed) this.handlers.closed(); }
   static getAllWindows() { return FakeWin.all; }
   static fromWebContents() { return null; }
@@ -241,6 +241,29 @@ const last = (ch) => [...sent].reverse().find((s) => s[0] === ch);
   assert.ok(JSON.parse(fs.readFileSync(path.join(userData, '.claude', 'settings.json'), 'utf8')).hooks.PermissionRequest[0].hooks[0].command.includes('hook.ps1'));
   await ipcHandle['claude-disconnect']();
   assert.strictEqual((await ipcHandle['claude-status']()).connected, false);
+
+  // live F1: demo feed drives the track-status events and the ambient light window; bad input is refused
+  assert.deepStrictEqual(await ipcHandle['f1live-do']({}, { a: 'nope' }), { ok: false });
+  assert.strictEqual((await ipcHandle['f1live-login']({}, { user: 'a b', pass: 'x' })).ok, false);
+  assert.strictEqual((await ipcHandle['f1live-login']({}, { user: '', pass: '' })).ok, false);
+  assert.ok(!fs.existsSync(path.join(userData, 'openf1.dat')), 'rejected credentials are not stored');
+  ipcOn['settings-update']({}, { f1Ambient: 'yes', f1CalmLights: true });
+  assert.strictEqual(last('settings')[1].f1Ambient, true); assert.strictEqual(last('settings')[1].f1CalmLights, true);
+  ipcOn['settings-update']({}, { f1CalmLights: false });
+  assert.deepStrictEqual(await ipcHandle['f1live-do']({}, { a: 'demo' }), { ok: true });
+  assert.strictEqual(last('f1live')[1].type === 'frame' || last('f1live')[1].type === 'flag' || last('f1live')[1].type === 'outline' || last('f1live')[1].type === 'session', true);
+  assert.deepStrictEqual(await ipcHandle['f1live-do']({}, { a: 'jump' }), { ok: true });
+  await ipcHandle['f1live-do']({}, { a: 'speed', x: 16 });
+  await new Promise((r) => setTimeout(r, 1500));
+  const yellow = sent.filter((m) => m[0] === 'f1live' && m[1].type === 'flag' && m[1].mode === 'yellow');
+  assert.ok(yellow.length, 'yellow flag reached the island');
+  const amb = FakeWin.all.find((w) => /ambient/.test(w.url || ''));
+  assert.ok(amb && amb.visible, 'ambient light window shown for a yellow');
+  assert.ok(sent.some((m) => m[0] === 'ambient' && m[1].mode === 'yellow' && m[1].calm === false));
+  ipcOn['settings-update']({}, { f1Ambient: false });
+  assert.ok(sent.filter((m) => m[0] === 'ambient').at(-1)[1].mode === 'off', 'turning the ambient light off clears it');
+  await ipcHandle['f1live-do']({}, { a: 'stop' });
+  assert.strictEqual(last('f1live')[1].type, 'stopped');
 
   // alert API still reaches the renderer
   await new Promise((resolve) => {

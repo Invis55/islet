@@ -15,6 +15,7 @@
       <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4.5" width="14" height="17" rx="3.2"/><path d="M9 4.5h6v2.2a1.2 1.2 0 0 1-1.2 1.2h-3.6A1.2 1.2 0 0 1 9 6.7z"/></symbol>
       <symbol id="i-note" viewBox="0 0 24 24"><rect x="4" y="3.5" width="16" height="17" rx="3.5"/><path d="M8 9h8M8 13h8M8 17h4"/></symbol>
       <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.4 2.5-1.3 4h-4.2l-1.3-4z"/><path d="M12 8V3.2M15.4 10.5l4.6-1.4M14.1 14.5l2.8 3.9M9.9 14.5l-2.8 3.9M8.6 10.5 4 9.1"/></symbol>
+      <symbol id="i-pulse" viewBox="0 0 24 24"><path d="M12 3.5c3.4 0 6 1.7 6 4s-2.4 3-6 3-6 .8-6 3.2 2.6 4 6 4"/><path d="M12 17.5v3M4 20.5h16"/><circle cx="12" cy="3.5" r="0"/></symbol>
       <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V3.5"/><path d="M6 5c3-1.6 5 1.6 8 0s3.2-.6 4-1v9c-.8.4-1 .6-4 1.2s-5-1.8-8-.2"/></symbol>
       <symbol id="i-spotify" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M6.8 9.4c3.6-1.1 7.9-.8 10.9 1.1M7.4 12.7c3.1-.8 6.3-.5 8.8 1M8 15.9c2.4-.6 4.7-.4 6.6.7"/></symbol>
       <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M3 7h3c5 0 5.6 10 11 10h3M3 17h3c1.5 0 2.6-.5 3.6-1.4M14.5 8.2C15.4 7.5 16.4 7 17.8 7H20"/><path d="m18 4.5 2.5 2.5L18 9.5M18 14.5l2.5 2.5L18 19.5"/></symbol>
@@ -40,6 +41,13 @@
         <span class="lm-score" id="lm-score">ARS 0–0 CHE</span>
         <img class="crest" id="lm-away-logo" alt="" />
         <span class="lm-clock" id="lm-clock">LIVE</span>
+      </div>
+
+      <!-- compact: track status (yellow / SC / VSC / red) -->
+      <div class="view" data-view="flag">
+        <span class="fl-sign" id="fl-sign">SC</span>
+        <span class="fl-label ellipsis" id="fl-label">SAFETY CAR</span>
+        <span class="fl-lap" id="fl-lap"></span>
       </div>
 
       <!-- alert -->
@@ -81,6 +89,7 @@
             <button class="tab" data-tab="spotify"><svg><use href="#i-spotify"/></svg><span>Spotify</span></button>
             <button class="tab" data-tab="football"><svg><use href="#i-ball"/></svg><span>Football</span></button>
             <button class="tab" data-tab="f1"><svg><use href="#i-flag"/></svg><span>F1</span></button>
+            <button class="tab" data-tab="live"><svg><use href="#i-pulse"/></svg><span>Live</span><i class="badge livedot" id="live-dot" hidden></i></button>
           </nav>
           <span class="spacer"></span>
           <span id="clock-time"></span>
@@ -230,6 +239,21 @@
             <div class="foot"><span id="f1-status"></span><button class="link" id="f1-refresh">↻ Refresh</button></div>
           </section>
 
+          <section class="page" data-page="live">
+            <div class="subbar">
+              <div class="lv-title"><b id="lv-name">Live F1</b><span class="lv-chip" id="lv-chip" hidden></span><span class="dim" id="lv-lap"></span></div>
+              <div class="lv-ctl" id="lv-ctl"></div>
+            </div>
+            <div class="lv-body">
+              <div class="lv-map" id="lv-mapbox">
+                <svg id="lv-svg" viewBox="0 0 1000 600" data-mode="green" aria-label="Track map"><path id="lv-path" /><g id="lv-cars"></g></svg>
+                <div class="lv-empty" id="lv-empty"></div>
+              </div>
+              <div class="lv-tower" id="lv-tower"></div>
+            </div>
+            <div class="foot"><span class="ellipsis" id="lv-ticker"></span><span class="ellipsis" id="lv-status"></span></div>
+          </section>
+
           <!-- SETTINGS -->
           <section class="page" data-page="settings">
             <div class="list settings">
@@ -254,6 +278,16 @@
                   <small>With a key, scores and tables come from API-Football (free plan: 100 requests a day; Islet stays inside that and falls back to ESPN). <a class="inline" id="af-link">Get a key</a></small>
                 </div>
                 <div class="item stack">
+                  <div class="item-head"><span class="lbl">OpenF1 (live timing)</span><span class="status" id="of-status">Replay and demo work without it</span></div>
+                  <div class="row">
+                    <input id="set-ofUser" type="text" placeholder="OpenF1 account email" spellcheck="false" autocomplete="off" />
+                    <input id="set-ofPass" type="password" placeholder="Password" spellcheck="false" autocomplete="off" />
+                    <button class="pill glass prom" id="of-login">Sign in</button>
+                    <button class="pill glass" id="of-logout" hidden>Sign out</button>
+                  </div>
+                  <small>Live sessions need a (paid) OpenF1 account. Replays of finished sessions and the built-in demo are free. Your password is stored encrypted on this PC only.</small>
+                </div>
+                <div class="item stack">
                   <div class="item-head"><span class="lbl">Calendar</span></div>
                   <div class="row">
                     <input id="set-ics" type="text" placeholder="https://calendar.google.com/…/basic.ics" spellcheck="false" />
@@ -273,6 +307,7 @@
               <div class="group">
                 <label class="item"><span class="lbl">Football: kick-off, goals, full-time</span><input type="checkbox" class="switch" id="set-footballAlerts" /></label>
                 <label class="item"><span class="lbl">F1: session reminders</span><input type="checkbox" class="switch" id="set-f1Alerts" /></label>
+                <label class="item"><span class="lbl">F1: go live automatically during a session</span><input type="checkbox" class="switch" id="set-f1LiveWatch" /></label>
                 <label class="item"><span class="lbl">Show Windows notifications as pop-ups</span><input type="checkbox" class="switch" id="set-popupFromNotifs" /></label>
                 <label class="item"><span class="lbl">Alert sounds</span><input type="checkbox" class="switch" id="set-sound" /></label>
               </div>
@@ -281,6 +316,8 @@
               <div class="group">
                 <label class="item"><span class="lbl">Show the notch when idle</span><input type="checkbox" class="switch" id="set-notch" /></label>
                 <label class="item"><span class="lbl">Music pill while something plays</span><input type="checkbox" class="switch" id="set-musicPill" /></label>
+                <label class="item"><span class="lbl">F1 ambient light for flags</span><input type="checkbox" class="switch" id="set-f1Ambient" /></label>
+                <label class="item"><span class="lbl">Calm lights (steady glow, no flashing)</span><input type="checkbox" class="switch" id="set-f1CalmLights" /></label>
               </div>
 
               <div class="group-title">General</div>
@@ -302,5 +339,6 @@
   <script src="panel.js"></script>
   <script src="sports.js"></script>
   <script src="spotify.js"></script>
+  <script src="f1live.js"></script>
 </body>
 </html>

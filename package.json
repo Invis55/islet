@@ -1,11 +1,11 @@
 {
   "name": "islet",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "A Dynamic Island for Windows: now-playing, alerts and Claude Code activity",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "test": "node test/server.test.js && node test/calendar.test.js && node test/notifications.test.js && node test/cliphistory.test.js && node test/teams.test.js && node test/sports.test.js && node test/apifootball.test.js && node test/spotify.test.js && node test/claudehooks.test.js && node test/main.smoke.test.js",
+    "test": "node test/server.test.js && node test/calendar.test.js && node test/notifications.test.js && node test/cliphistory.test.js && node test/teams.test.js && node test/sports.test.js && node test/apifootball.test.js && node test/spotify.test.js && node test/claudehooks.test.js && node test/trackstate.test.js && node test/f1live.test.js && node test/main.smoke.test.js",
     "dist": "electron-builder --win nsis --x64 --publish never"
   },
   "devDependencies": {

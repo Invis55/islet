@@ -15,6 +15,8 @@ contextBridge.exposeInMainWorld('islet', {
   onSummary: on('summary'),
   onTogglePin: on('toggle-pin'),
   onSpotifyChanged: on('spotify-changed'),
+  onF1Live: on('f1live'),
+  onAmbient: on('ambient'),
 
   setHover: (over) => ipcRenderer.send('hover', over),
   setFocusable: (on) => ipcRenderer.send('focusable', on),
@@ -38,6 +40,9 @@ contextBridge.exposeInMainWorld('islet', {
   spotifyCmd: (cmd, arg) => ipcRenderer.invoke('spotify-cmd', cmd, arg),
   spotifyPlaylists: () => ipcRenderer.invoke('spotify-playlists'),
   spotifyDevices: () => ipcRenderer.invoke('spotify-devices'),
+  f1Live: (cmd) => ipcRenderer.invoke('f1live-do', cmd),
+  f1Login: (user, pass) => ipcRenderer.invoke('f1live-login', { user, pass }),
+  f1Logout: () => ipcRenderer.invoke('f1live-logout'),
   openLink: (url) => ipcRenderer.send('open-link', url),
   openOnboarding: () => ipcRenderer.send('onboarding-open'),
   onboardingDone: () => ipcRenderer.send('onboarding-done'),

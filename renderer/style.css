@@ -420,3 +420,51 @@ input[type="range"]:disabled { opacity: .4; cursor: default; }
 .drow.fav { background: color-mix(in srgb, var(--blue) 22%, transparent); }
 .drow .star { padding: 0 2px; }
 .rc-fav { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ================= F1 live ================= */
+input[type="password"] { flex: 1; min-width: 0; background: rgba(255, 255, 255, .08); border: 1px solid transparent; border-radius: 999px; padding: 7px 14px; color: #fff; font: 400 12px var(--font); outline: none; }
+input[type="password"]:focus { border-color: rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .11); }
+.livedot { background: #ff3b30 !important; animation: livepulse 1.6s ease-in-out infinite; }
+@keyframes livepulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+.lv-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.lv-title b { font: 600 13.5px var(--font-display); letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 230px; }
+.lv-chip { flex: none; font: 700 10px var(--font); letter-spacing: .04em; padding: 2px 8px; border-radius: 999px; color: #000; background: #34c759; }
+.lv-chip[data-mode="yellow"], .lv-chip[data-mode="double"], .lv-chip[data-mode="sc"], .lv-chip[data-mode="vsc"], .lv-chip[data-mode="sc-end"], .lv-chip[data-mode="vsc-end"] { background: #ffc400; }
+.lv-chip[data-mode="red"] { background: #ff3b30; color: #fff; }
+.lv-chip[data-mode="chequered"] { background: #fff; }
+.lv-ctl { display: flex; align-items: center; gap: 6px; flex: none; }
+.lv-ctl .pill { padding: 5px 12px; font-size: 11.5px; }
+.lv-ctl .seg button { padding: 4px 9px; font-size: 11.5px; }
+.lv-body { flex: 1; min-height: 0; display: flex; gap: 10px; }
+.lv-map { position: relative; flex: 1; min-width: 0; border-radius: 18px; background: rgba(255, 255, 255, .05); box-shadow: inset 0 0 0 .5px rgba(255, 255, 255, .08); overflow: hidden; }
+.lv-map svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+#lv-path { fill: none; stroke: rgba(255, 255, 255, .28); stroke-width: 15; stroke-linecap: round; stroke-linejoin: round; transition: stroke .4s ease; }
+#lv-svg[data-mode="yellow"] #lv-path, #lv-svg[data-mode="double"] #lv-path, #lv-svg[data-mode="sc"] #lv-path, #lv-svg[data-mode="vsc"] #lv-path, #lv-svg[data-mode="sc-end"] #lv-path, #lv-svg[data-mode="vsc-end"] #lv-path { stroke: rgba(255, 196, 0, .75); }
+#lv-svg[data-mode="red"] #lv-path { stroke: rgba(255, 59, 48, .85); }
+#lv-svg[data-mode="green"] #lv-path { stroke: rgba(255, 255, 255, .3); }
+.lv-car { transition: transform .26s linear; }
+.lv-car circle { stroke: rgba(0, 0, 0, .75); stroke-width: 3; }
+.lv-car.lead circle { stroke: #fff; stroke-width: 4; }
+.lv-car text { fill: #fff; font: 700 21px var(--font); paint-order: stroke; stroke: rgba(0, 0, 0, .8); stroke-width: 5px; display: none; }
+.lv-car.lead text, .lv-car.fav text { display: block; }
+.lv-empty { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 0 22px; font-size: 12px; color: var(--label2); line-height: 1.4; }
+.lv-empty[hidden] { display: none; }
+.lv-tower { flex: none; width: 158px; overflow-y: auto; padding-right: 4px; }
+.lv-tower::-webkit-scrollbar { width: 5px; }
+.lv-tower::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .2); border-radius: 3px; }
+.lv-row { display: flex; align-items: center; gap: 6px; height: 17px; font: 600 11.5px var(--font); font-variant-numeric: tabular-nums; }
+.lv-row .p { width: 15px; text-align: right; color: var(--label2); }
+.lv-row i { width: 3px; height: 12px; border-radius: 2px; flex: none; }
+.lv-row .c { flex: 1; }
+.lv-row .g { color: var(--label2); font-weight: 500; }
+.lv-row.fav .c { color: #ffd60a; }
+
+/* island: track-status pill */
+#island[data-state="flag"] { width: 300px; height: 38px; border-radius: 0 0 19px 19px; }
+#island[data-state="flag"] [data-view="flag"] { opacity: 1; filter: none; transform: none; pointer-events: auto; transition: opacity .35s ease .1s, filter .4s ease .1s, transform .55s var(--spring) .08s; }
+[data-view="flag"] { align-items: center; gap: 9px; padding: 0 14px; }
+.fl-sign { flex: none; min-width: 26px; height: 20px; padding: 0 6px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font: 800 11px var(--font); letter-spacing: .02em; background: #ffc400; color: #000; }
+[data-view="flag"][data-mode="red"] .fl-sign { background: #ff3b30; color: #fff; }
+.fl-label { flex: 1; font: 600 12.5px var(--font-display); letter-spacing: .01em; }
+.fl-lap { flex: none; font: 500 11.5px var(--font); color: var(--label2); }
