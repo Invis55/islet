@@ -3,7 +3,7 @@
 // the feed keeps a small buffer, plays it back at a playhead (live: a few seconds behind real time; replay: at 1x/4x/16x),
 // and emits normalised frames for the UI plus track-status changes for the ambient light.
 const { TrackState } = require('./trackstate');
-const { createOpenF1, createAuth } = require('./openf1');
+const { createOpenF1, createAuth, isLiveWindow } = require('./openf1');
 const { createDemoSource } = require('./f1demo');
 
 const MINUTE = 60000;
@@ -69,7 +69,7 @@ class LiveFeed {
   }
   async _pollRaceControl() {
     const now = this.clock();
-    if (now - this.rcLast < (this.fast ? 3000 : 8000) * this.slow) return;
+    if (now - this.rcLast < (this.fast ? 5000 : 10000) * this.slow) return;
     this.rcLast = now;
     try {
       const rows = await this.source.raceControl(this.rcTo + 1, undefined);
@@ -108,13 +108,16 @@ class LiveFeed {
 
   /* ---------- buffered series ---------- */
   _cfg(kind) {
-    const rep = this.mode === 'replay', sp = Math.max(1, this.speed);
+    const sp = Math.max(1, this.speed);
+    // Replay fetches ahead in chunks that scale with speed, so the request rate stays flat however fast you play it.
+    // Live polls on a fixed cadence. Both stay well inside OpenF1's 30/min (free) and 60/min (sponsor) caps.
     return {
-      loc: { method: 'location', chunk: 6000 * sp, ahead: 6000 * sp, gap: this.fast ? 1500 : 3500, back: 3000, keep: 10000 },
-      pos: { method: 'positions', chunk: 30000 * sp, ahead: 30000 * sp, gap: this.fast ? 6000 : 15000, back: 20000, keep: 90000 },
-      int: { method: 'intervals', chunk: 30000 * sp, ahead: 30000 * sp, gap: this.fast ? 6000 : 15000, back: 20000, keep: 90000 },
+      loc: { method: 'location', chunk: 10000 * sp, ahead: 10000 * sp, gap: this.fast ? 2500 : 5000, back: 3000, keep: 12000 },
+      pos: { method: 'positions', chunk: 60000 * sp, ahead: 60000 * sp, gap: this.fast ? 15000 : 25000, back: 20000, keep: 90000 },
+      int: { method: 'intervals', chunk: 60000 * sp, ahead: 60000 * sp, gap: this.fast ? 15000 : 25000, back: 20000, keep: 90000 },
     }[kind];
   }
+
   async _fill(kind, ph) {
     const s = this.series[kind], cfg = this._cfg(kind), now = this.clock();
     if (s.busy) return;
@@ -138,6 +141,11 @@ class LiveFeed {
   _ok() { this.slow = Math.max(1, this.slow * 0.9); if (this.lastError) { this.lastError = ''; this.emit({ type: 'status', error: '' }); } }
   _error(e) {
     if (e && e.kind === 'rate') this.slow = Math.min(8, this.slow * 2);
+    if (e && e.kind === 'auth' && this.mode === 'live') {
+      this.emit({ type: 'status', error: e.message, kind: 'auth' });
+      this.stop();
+      return;
+    }
     const msg = (e && e.message) || String(e);
     if (msg !== this.lastError) { this.lastError = msg; this.emit({ type: 'status', error: msg, kind: e && e.kind }); }
   }
@@ -206,32 +214,57 @@ class LiveFeed {
 }
 
 /* ---------- manager: picks live / replay / demo and watches for real sessions ---------- */
-function createLiveManager({ fetchFn = globalThis.fetch, getCreds = () => null, emit = () => {}, onAlert = () => {}, clock = Date.now } = {}) {
+function createLiveManager({ fetchFn = globalThis.fetch, getCreds = () => null, emit = () => {}, onAlert = () => {}, clock = Date.now, limiter } = {}) {
   const auth = createAuth({ fetchFn, getCreds, clock });
-  const api = createOpenF1({ fetchFn, auth, clock });
+  const api = createOpenF1({ fetchFn, auth, clock, ...(limiter ? { limiter } : {}) });
   let feed = null, mode = 'idle', watchTimer = null, lastSession = null;
+  let waitingFor = null;        // a session we could not follow live; replay it once its data is free
+  let sponsorNeeded = false;    // OpenF1 refused live data, so don't keep asking this session
   const wrap = (e) => emit({ ...e, feedMode: mode });
+  const brief = (s) => s && ({ key: s.key, name: s.name, circuit: s.circuit, country: s.country, start: s.start, end: s.end });
 
   async function begin(source, opts) {
     stop();
     mode = opts.mode === 'live' ? 'live' : source.demo ? 'demo' : 'replay';
-    feed = new LiveFeed({ source, clock, emit: wrap, fast: auth.signedIn() || !!(getCreds() && getCreds().user), ...opts });
-    await feed.start();
+    feed = new LiveFeed({ source, clock, emit: wrap, fast: auth.signedIn(), ...opts });
+    try { await feed.start(); } catch (e) { stop(); throw e; }
     return feed;
   }
   function stop() { if (feed) feed.stop(); feed = null; if (mode !== 'idle') { mode = 'idle'; emit({ type: 'stopped', feedMode: mode }); } }
 
+  function sayGated(s) {
+    emit({ type: 'gated', session: brief(s), signedIn: auth.signedIn(), feedMode: mode,
+      error: 'Live timing needs an OpenF1 sponsor account (\u20ac9.90/month). Islet will replay this session automatically once it finishes.' });
+  }
+
   async function watchOnce() {
-    if (mode === 'replay' || mode === 'demo') return;
+    if (mode === 'replay' || mode === 'demo') return;   // the user is watching something else
     try {
       const s = await api.latestSession();
       if (!s) return;
       lastSession = s;
       const now = clock();
-      const live = now >= s.start - 10 * MINUTE && now <= s.end + 10 * MINUTE;
-      if (live && mode !== 'live') { await begin(api.sourceFor(s), { mode: 'live' }); onAlert({ title: 'F1 session live', body: `${s.name} · ${s.circuit}`, icon: '🏁' }); }
-      else if (!live && mode === 'live') stop();
-      if (!live) emit({ type: 'idle', last: { name: s.name, circuit: s.circuit, country: s.country, start: s.start, end: s.end } });
+      if (isLiveWindow(s, now)) {
+        if (mode === 'live') return;                     // already following it
+        if (sponsorNeeded && !auth.signedIn()) { waitingFor = s; sayGated(s); return; }
+        try {
+          await begin(api.sourceFor(s), { mode: 'live' });
+          waitingFor = null; sponsorNeeded = false;
+          onAlert({ title: 'F1 session live', body: `${s.name} \u00b7 ${s.circuit}`, icon: '\ud83c\udfc1' });
+        } catch (e) {
+          if (!e || e.kind !== 'auth') throw e;
+          sponsorNeeded = true; waitingFor = s; sayGated(s);
+        }
+        return;
+      }
+      if (mode === 'live') stop();                       // the session is over
+      // Its data is free again now, so pick up the session we could not watch live.
+      if (waitingFor && waitingFor.key === s.key) {
+        const was = waitingFor; waitingFor = null; sponsorNeeded = false;
+        onAlert({ title: 'Ready to replay', body: `${was.name} \u00b7 ${was.circuit}`, icon: '\ud83c\udfc1', duration: 8000 });
+        emit({ type: 'ready', session: brief(was), feedMode: mode });
+      }
+      emit({ type: 'idle', last: brief(s), signedIn: auth.signedIn() });
     } catch (e) { emit({ type: 'status', error: e.message, kind: e.kind, feedMode: mode }); }
   }
   function startWatch(everyMs = 60000) { clearInterval(watchTimer); watchTimer = setInterval(watchOnce, everyMs); watchOnce(); }
@@ -239,13 +272,14 @@ function createLiveManager({ fetchFn = globalThis.fetch, getCreds = () => null, 
 
   async function replay(kind = 'latest') {
     const year = new Date(clock()).getUTCFullYear();
-    let sessions = await api.recentSessions(year);
-    sessions = sessions.filter((s) => s.end < clock());
-    if (!sessions.length) sessions = (await api.recentSessions(year - 1)).filter((s) => s.end < clock());
+    const usable = (list) => list.filter((s) => s.end < clock() && !isLiveWindow(s, clock()));
+    let sessions = usable(await api.recentSessions(year));
+    if (!sessions.length) sessions = usable(await api.recentSessions(year - 1));
     const want = { race: /^race$/i, qualifying: /^qualifying$/i, sprint: /^sprint$/i };
     const pool = want[kind] ? sessions.filter((s) => want[kind].test(s.name)) : sessions;
     const s = pool[pool.length - 1];
     if (!s) throw new Error('No finished session found to replay');
+    waitingFor = null;
     return begin(api.sourceFor(s), { mode: 'replay', speed: 1, startAt: s.start });
   }
   async function demo() { return begin(createDemoSource(), { mode: 'replay', speed: 1, loop: true }); }
@@ -253,7 +287,10 @@ function createLiveManager({ fetchFn = globalThis.fetch, getCreds = () => null, 
   return {
     api, auth, watchOnce, startWatch, stopWatch, replay, demo, stop,
     setSpeed: (x) => feed && feed.setSpeed(x), jumpNextFlag: () => !!(feed && feed.jumpToNextFlag()),
-    snapshot: () => ({ mode, last: lastSession, feed: feed ? feed.snapshot() : null }), get mode() { return mode; },
+    signedIn: () => auth.signedIn(),
+    forgetGate() { sponsorNeeded = false; waitingFor = null; },
+    snapshot: () => ({ mode, last: brief(lastSession), signedIn: auth.signedIn(), feed: feed ? feed.snapshot() : null }),
+    get mode() { return mode; },
   };
 }
 

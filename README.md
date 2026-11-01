@@ -35,7 +35,12 @@ Hover the notch (it swells, then opens) or click it to pin it open. Click the gr
 
 ## Live F1 and ambient flag lights
 
-Timing comes from [OpenF1](https://openf1.org). Replays of finished sessions and the demo are free; **live** sessions need an OpenF1 account (Settings → Connections → OpenF1). With one signed in, Islet goes live by itself when a session starts (switch off under Alerts).
+Timing comes from [OpenF1](https://openf1.org), which mirrors Formula 1's own feed. What you get depends on when you look:
+
+- **Replays** of any finished session, and the built-in demo race, are **free and need no account**.
+- **Live timing while a session is running** needs an OpenF1 **sponsor account (€9.90/month)**. OpenF1 treats data as live from 30 minutes before a session starts until 30 minutes after it ends, and only serves that window to sponsors. Formula 1 itself no longer publishes an open live feed — its timing service now answers `401` to everyone — so there is no free route to live data.
+
+Without an account Islet still notices a session running, says so, and **replays it automatically as soon as it finishes** (with an alert). Sign in under Settings → Connections → OpenF1 and it goes live by itself instead; the password is encrypted on your PC. Islet stays inside OpenF1's request limits either way (3/s and 30/min free, double that for sponsors).
 
 Track status also drives a glow along the top edge of your screen, plus a pill on the notch:
 
@@ -81,7 +86,7 @@ Type is **Inter** (bundled, SIL Open Font License, `renderer/fonts/LICENSE-Inter
 `npm test` runs the automated tests (no Electron or Windows needed). Every push to `main` makes GitHub Actions run the tests, build `Islet-Setup.exe` on a Windows runner and publish it to a Release for the version in `package.json` (bump it for a new release).
 
 ## Known limits
-- Developed without a Windows machine to hand: the logic and UI are covered by tests and screenshots, but these can only be proven on Windows: the media bridge (`media.ps1`), the notification reader (`notifications.ps1`), the Claude Code hook (`hook.ps1`), the live football/F1/Spotify services (including OpenF1 live access and its sign-in), and dragging a screenshot out of the panel. Errors show in the relevant tab.
+- Developed without a Windows machine to hand: the logic and UI are covered by tests and screenshots, but these can only be proven on Windows: the media bridge (`media.ps1`), the notification reader (`notifications.ps1`), the Claude Code hook (`hook.ps1`), the live football/F1/Spotify services, and OpenF1 live access and its sign-in (the free replay path is verified against the real API), and dragging a screenshot out of the panel. Errors show in the relevant tab.
 - The Alerts tab reads an undocumented Windows database and ESPN's feed is unofficial. Either could change.
 - Spotify's Web API has been changing; if a control stops working, Settings → Spotify shows the reason.
 - Primary monitor only.

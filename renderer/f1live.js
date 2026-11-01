@@ -8,7 +8,7 @@
   const COLOR = /^#[0-9a-fA-F]{6}$/;
 
   let settings = window.UI.settings;
-  const st = { mode: 'idle', session: null, drivers: new Map(), cars: new Map(), speed: 1, flag: null, last: null, error: '', errorKind: '', ended: false, running: false };
+  const st = { mode: 'idle', session: null, drivers: new Map(), cars: new Map(), speed: 1, flag: null, last: null, error: '', errorKind: '', ended: false, running: false, gated: null, ready: null, signedIn: false };
 
   /* ---------- controls ---------- */
   function button(label, cls, fn) { const b = el('button', `pill glass ${cls || ''}`.trim(), label); b.addEventListener('click', fn); return b; }
@@ -20,7 +20,10 @@
   function renderControls() {
     const box = $('lv-ctl'); box.replaceChildren();
     if (!st.running) {
-      box.append(button('Replay last race', 'prom', () => { st.error = ''; st.ended = false; run({ a: 'replay', kind: 'race' }); }), button('Demo', '', () => { st.error = ''; st.ended = false; run({ a: 'demo' }); }));
+      const label = st.ready ? `Replay ${st.ready.name}` : 'Replay last race';
+      box.append(button(label, 'prom', () => { st.error = ''; st.ended = false; st.ready = null; run({ a: 'replay', kind: 'race' }); }),
+        button('Demo', '', () => { st.error = ''; st.ended = false; run({ a: 'demo' }); }));
+      if (st.gated && !st.signedIn) box.append(button('Get live timing', '', () => window.islet.openLink('https://openf1.org/')));
       return;
     }
     if (st.mode !== 'live') {
@@ -36,14 +39,17 @@
     const name = $('lv-name'), empty = $('lv-empty'), status = $('lv-status');
     name.textContent = st.session ? st.session.name + (st.session.circuit ? ` · ${st.session.circuit}` : '') : 'Live F1';
     let msg = '';
-    if (st.error) msg = st.errorKind === 'auth' ? 'Live data needs an OpenF1 account (Settings). Replay and demo are free.' : st.error;
+    if (st.gated) msg = 'Waiting for the session to finish';     // the panel already explains why
+    else if (st.error) msg = st.error;
     else if (st.ended) msg = 'Replay finished';
     else if (st.running) msg = st.mode === 'live' ? 'LIVE' : st.mode === 'demo' ? 'Demo' : 'Replay';
-    status.textContent = msg; status.classList.toggle('err', !!st.error);
+    status.textContent = msg; status.classList.toggle('err', !!st.error && !st.gated);
     $('live-dot').hidden = !(st.running && st.mode === 'live');
     if (st.running && st.cars.size) { empty.hidden = true; return; }
     empty.hidden = false;
     if (st.running) empty.textContent = 'Waiting for the track map…';
+    else if (st.ready) empty.textContent = `${st.ready.name} · ${st.ready.circuit} has finished and is ready to replay.`;
+    else if (st.gated) empty.textContent = `${st.gated.session.name} · ${st.gated.session.circuit} is running now, but OpenF1 only serves live timing to sponsors (€9.90/month). Islet will replay it automatically once it finishes — or watch the demo meanwhile.`;
     else if (st.last) empty.textContent = `No session running. Last: ${st.last.name} · ${st.last.circuit}. Replay it, or try the demo.`;
     else empty.textContent = 'No session running. Replay the last race, or try the demo to see the flags and ambient light.';
   }
@@ -124,7 +130,9 @@
         if (e.ended) { st.ended = true; st.running = false; }
         if (e.error !== undefined) { st.error = e.error; st.errorKind = e.kind || ''; }
         break;
-      case 'idle': st.last = e.last; break;
+      case 'idle': st.last = e.last; st.signedIn = !!e.signedIn; st.gated = null; break;
+      case 'gated': st.gated = e; st.signedIn = !!e.signedIn; st.running = false; st.error = e.error; st.errorKind = 'auth'; break;
+      case 'ready': st.ready = e.session; st.gated = null; st.error = ''; break;
       case 'stopped': st.running = false; st.session = null; st.mode = 'idle'; st.flag = null; reset(); break;
     }
     renderControls(); renderStatus(); renderFlagChip();
@@ -135,7 +143,7 @@
   function renderAccount() {
     const signed = !!settings.openf1User;
     $('of-logout').hidden = !signed; $('of-login').hidden = signed;
-    $('of-status').textContent = signed ? `Signed in as ${settings.openf1User}` : 'Replay and demo work without it';
+    $('of-status').textContent = signed ? `Signed in as ${settings.openf1User}` : 'Not signed in — replays and demo still work';
     if (document.activeElement !== user) user.value = settings.openf1User || '';
     pass.hidden = signed; user.disabled = signed;
   }
@@ -146,6 +154,7 @@
     if (!r.ok) $('of-status').textContent = r.error || 'Could not sign in';
   });
   $('of-logout').addEventListener('click', () => window.islet.f1Logout());
+  $('of-link').addEventListener('click', () => window.islet.openLink('https://openf1.org/'));
   for (const key of ['f1Ambient', 'f1CalmLights', 'f1LiveWatch']) $(`set-${key}`).addEventListener('change', (ev) => window.islet.updateSettings({ [key]: ev.target.checked }));
 
   window.Panel.register('live', { show() { renderControls(); renderStatus(); renderFlagChip(); } });

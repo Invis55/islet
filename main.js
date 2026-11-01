@@ -462,7 +462,7 @@ function update(patch) {
 }
 
 /* ---------- IPC ---------- */
-const LINK_HOSTS = new Set(['www.api-football.com', 'dashboard.api-football.com', 'developer.spotify.com', 'accounts.spotify.com']);
+const LINK_HOSTS = new Set(['www.api-football.com', 'dashboard.api-football.com', 'developer.spotify.com', 'accounts.spotify.com', 'openf1.org', 'www.openf1.org']);
 ipcMain.on('hover', (_e, over) => { if (win) win.setIgnoreMouseEvents(!over, { forward: true }); });
 ipcMain.on('focusable', (_e, on) => {
   if (!win) return;

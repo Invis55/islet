@@ -18,6 +18,45 @@ const iso = (ms) => new Date(ms).toISOString().slice(0, -1); // UTC, no zone: wh
 // Filters like date>=... carry their operator in the key, so keys ending in an operator get no "=".
 const qs = (pairs) => pairs.map(([k, v]) => `${k}${/[<>=]$/.test(k) ? '' : '='}${encodeURIComponent(v).replace(/%3A/gi, ':')}`).join('&');
 
+// OpenF1 caps free keys at 3 requests a second and 30 a minute (double that for sponsors).
+// Every call goes through here: requests are serialised and delayed rather than refused.
+const FREE = { perSec: 3, perMin: 30 };
+const SPONSOR = { perSec: 6, perMin: 60 };
+function createLimiter({ perSec = FREE.perSec, perMin = FREE.perMin, clock = Date.now, sleep = (ms) => new Promise((r) => setTimeout(r, ms)) } = {}) {
+  let limits = { perSec, perMin };
+  let hits = [];
+  let chain = Promise.resolve();
+  const trim = (now) => { hits = hits.filter((t) => now - t < 60000); };
+  function waitFor() {
+    const now = clock();
+    trim(now);
+    const sec = hits.filter((t) => now - t < 1000);
+    if (sec.length >= limits.perSec) return 1000 - (now - sec[0]) + 20;
+    if (hits.length >= limits.perMin) return 60000 - (now - hits[0]) + 20;
+    return 0;
+  }
+  function run(fn) {
+    const go = async () => {
+      for (let d = waitFor(); d > 0; d = waitFor()) await sleep(d);
+      hits.push(clock());
+      return fn();
+    };
+    const p = chain.then(go, go);
+    chain = p.then(() => {}, () => {});
+    return p;
+  }
+  return {
+    run,
+    setLimits: (l) => { limits = { ...l }; },
+    used: () => { trim(clock()); return { lastMinute: hits.length, perMin: limits.perMin }; },
+  };
+}
+
+// OpenF1 treats a session as "live" from 30 min before the start until 30 min after the end;
+// in that window the data needs a sponsor account. Outside it, everything is free.
+const LIVE_PAD = 30 * 60000;
+const isLiveWindow = (session, now) => !!session && now >= session.start - LIVE_PAD && now <= session.end + LIVE_PAD;
+
 function createAuth({ fetchFn = globalThis.fetch, getCreds = () => null, clock = Date.now } = {}) {
   let token = null, exp = 0;
   async function login() {
@@ -53,13 +92,14 @@ function cleanOutline(rows) {
   return out;
 }
 
-function createOpenF1({ fetchFn = globalThis.fetch, auth = null, clock = Date.now } = {}) {
+function createOpenF1({ fetchFn = globalThis.fetch, auth = null, clock = Date.now, limiter = createLimiter() } = {}) {
   async function get(path, pairs) {
     const headers = { Accept: 'application/json', ...(auth ? await auth.header() : {}) };
-    const res = await fetchFn(`${BASE}${path}?${qs(pairs)}`, { headers, signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined });
+    limiter.setLimits(auth && auth.signedIn() ? SPONSOR : FREE);
+    const res = await limiter.run(() => fetchFn(`${BASE}${path}?${qs(pairs)}`, { headers, signal: AbortSignal.timeout ? AbortSignal.timeout(15000) : undefined }));
     if (res.status === 404) return [];                                  // "No results found"
     if (res.status === 429) throw new OpenF1Error('rate', 'OpenF1 is rate limiting', 429, Number(res.headers && res.headers.get && res.headers.get('retry-after')) || 5);
-    if (res.status === 401 || res.status === 403) throw new OpenF1Error('auth', 'Live data needs an OpenF1 account', res.status);
+    if (res.status === 401 || res.status === 403) throw new OpenF1Error('auth', 'Live timing needs an OpenF1 sponsor account (\u20ac9.90/month). Replays and the demo are free.', res.status);
     if (!res.ok) throw new OpenF1Error('http', `OpenF1 answered ${res.status}`, res.status);
     const j = await res.json();
     return Array.isArray(j) ? j : [];
@@ -81,14 +121,17 @@ function createOpenF1({ fetchFn = globalThis.fetch, auth = null, clock = Date.no
           color: d.team_colour ? `#${String(d.team_colour).replace('#', '')}` : '#888888',
         }));
       },
-      // One clean lap of a car's GPS trace = the circuit outline
-      async outline(driverNumbers) {
-        for (const n of driverNumbers.slice(0, 3)) {
-          for (const lapNo of [2, 3]) {
-            const l = (await get('/laps', [['session_key', key], ['driver_number', n], ['lap_number', lapNo]]))[0];
-            if (!l || !l.date_start || !l.lap_duration) continue;
+      // One clean lap of a car's GPS trace = the circuit outline.
+      // /laps with a lap number returns that lap for every driver, so this costs 2 requests, not one per driver.
+      async outline(driverNumbers = []) {
+        const want = new Set(driverNumbers);
+        for (const lapNo of [3, 5, 2]) {
+          const rows = (await get('/laps', [['session_key', key], ['lap_number', lapNo]]))
+            .filter((l) => l.lap_duration > 0 && l.date_start && (!want.size || want.has(l.driver_number)))
+            .sort((a, b) => a.lap_duration - b.lap_duration);           // the quickest lap is the cleanest trace
+          for (const l of rows.slice(0, 2)) {
             const s = ts(l.date_start);
-            const trace = await get('/location', [['session_key', key], ['driver_number', n], ['date>=', iso(s)], ['date<', iso(s + l.lap_duration * 1000 + 500)]]);
+            const trace = await get('/location', [['session_key', key], ['driver_number', l.driver_number], ['date>=', iso(s)], ['date<', iso(s + l.lap_duration * 1000 + 500)]]);
             const o = cleanOutline(trace.map((r) => ({ x: r.x, y: r.y, t: ts(r.date) })));
             if (o.length > 40) return o;
           }
@@ -104,7 +147,7 @@ function createOpenF1({ fetchFn = globalThis.fetch, auth = null, clock = Date.no
       async intervals(from, to) { return (await get('/intervals', rng(from, to))).map((r) => ({ n: r.driver_number, gap: r.gap_to_leader, int: r.interval, t: ts(r.date) })).filter((r) => Number.isFinite(r.t)); },
     };
   }
-  return { get, latestSession, recentSessions, sourceFor, clock };
+  return { get, latestSession, recentSessions, sourceFor, clock, limiter };
 }
 
-module.exports = { createOpenF1, createAuth, OpenF1Error, ts, iso, qs, cleanOutline, normSession, BASE, TOKEN_URL };
+module.exports = { createOpenF1, createAuth, createLimiter, OpenF1Error, ts, iso, qs, cleanOutline, normSession, isLiveWindow, LIVE_PAD, FREE, SPONSOR, BASE, TOKEN_URL };

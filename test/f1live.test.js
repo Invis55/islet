@@ -4,6 +4,23 @@ const { createDemoSource, BASE, LENGTH, DRIVERS } = require('../f1demo');
 const O = require('../openf1');
 
 (async () => {
+  const nolimit = { run: (fn) => fn(), setLimits() {}, used: () => ({}) };
+
+  /* ---------- rate limiter: OpenF1 allows 3/s and 30/min free, so requests queue instead of failing ---------- */
+  {
+    let t = 0;
+    const lim = O.createLimiter({ perSec: 3, perMin: 5, clock: () => t, sleep: async (ms) => { t += ms; } });
+    const done = [];
+    await Promise.all(Array.from({ length: 7 }, (_, i) => lim.run(async () => { done.push([i, t]); return i; })));
+    assert.deepStrictEqual(done.map((d) => d[0]), [0, 1, 2, 3, 4, 5, 6], 'every request runs, in order');
+    assert.deepStrictEqual(done.slice(0, 3).map((d) => d[1]), [0, 0, 0], 'first three go straight through');
+    assert.ok(done[3][1] >= 1000 && done[3][1] < 2000, 'the fourth waits out the per-second window');
+    assert.ok(done[5][1] >= 60000, 'the sixth waits out the per-minute window');
+    assert.strictEqual(O.isLiveWindow({ start: 1000 * 60 * 60, end: 2000 * 60 * 60 }, 1000 * 60 * 60 - 20 * 60000), true, '20 min before the start is live');
+    assert.strictEqual(O.isLiveWindow({ start: 1000 * 60 * 60, end: 2000 * 60 * 60 }, 1000 * 60 * 60 - 40 * 60000), false, '40 min before is not');
+    assert.strictEqual(O.isLiveWindow({ start: 0, end: 1000 }, 31 * 60000), false, 'more than 30 min after the end is free again');
+  }
+
   /* ---------- OpenF1 client: URLs, filters, auth, errors, normalisation ---------- */
   assert.strictEqual(O.qs([['session_key', 9161], ['date>=', '2026-11-01T14:03:35.200'], ['date<', '2026-11-01T14:03:41.200']]),
     'session_key=9161&date>=2026-11-01T14:03:35.200&date<2026-11-01T14:03:41.200');
@@ -32,7 +49,7 @@ const O = require('../openf1');
     return res(404, []);
   };
   const auth = O.createAuth({ fetchFn, getCreds: () => creds });
-  const api = O.createOpenF1({ fetchFn, auth });
+  const api = O.createOpenF1({ fetchFn, auth, limiter: nolimit });
 
   const s = await api.latestSession();
   assert.deepStrictEqual([s.key, s.name, s.circuit, s.start, s.end], [9999, 'Race', 'Mexico City', Date.UTC(2026, 10, 1, 20), Date.UTC(2026, 10, 1, 22)]);
@@ -59,6 +76,29 @@ const O = require('../openf1');
   mode = 'auth'; await assert.rejects(() => api.latestSession(), (e) => e.kind === 'auth' && /account/.test(e.message));
   mode = 'empty'; assert.deepStrictEqual(await src.location(0, 1), []); assert.strictEqual(await api.latestSession(), null);
   mode = 'ok';
+
+  /* ---------- outline: 2 requests, quickest lap wins, bad laps skipped ---------- */
+  {
+    const seen = [];
+    const circle = (n) => Array.from({ length: n }, (_, i) => ({ driver_number: 7, x: Math.round(3000 * Math.cos(i / n * 6.283)), y: Math.round(2000 * Math.sin(i / n * 6.283)), date: new Date(Date.UTC(2026, 10, 1, 20, 30, 0, 0) + i * 250).toISOString() }));
+    const f = async (url) => {
+      const u = new URL(url); seen.push(u.pathname + u.search);
+      if (u.pathname === '/v1/laps') return res(200, [
+        { driver_number: 9, lap_number: 3, lap_duration: null, date_start: null },
+        { driver_number: 7, lap_number: 3, lap_duration: 78.5, date_start: '2026-11-01T20:30:00+00:00' },
+        { driver_number: 8, lap_number: 3, lap_duration: 95.2, date_start: '2026-11-01T20:30:00+00:00' }]);
+      if (u.pathname === '/v1/location') return res(200, circle(300));
+      return res(200, []);
+    };
+    const src = O.createOpenF1({ fetchFn: f, limiter: nolimit }).sourceFor({ key: 42, start: 0, end: 1 });
+    const pts = await src.outline([7, 8, 9]);
+    assert.strictEqual(seen.length, 2, 'one /laps call covers every driver');
+    assert.ok(/lap_number=3/.test(seen[0]) && seen[0].startsWith('/v1/laps'));
+    assert.ok(/driver_number=7/.test(seen[1]), 'picks the quickest valid lap, skipping the one with no duration');
+    assert.ok(/date(%3E|>)=2026-11-01T20:30:00.000&date(%3C|<)2026-11-01T20:31:19.000/.test(seen[1]), seen[1]); // the real API accepts the operator raw or encoded
+    assert.ok(pts.length > 40 && pts.length <= 500);
+    assert.ok(pts.every((p) => Number.isFinite(p.x) && Number.isFinite(p.y)));
+  }
 
   /* ---------- feed over the offline demo: positions, tower, flags in order, speed, jump, loop ---------- */
   let now = 1_800_000_000_000;
@@ -127,7 +167,7 @@ const O = require('../openf1');
   assert.ok(liveEvents.some((e) => e.type === 'outline' && e.kind === 'trail'), 'no clean lap yet: draws the trail of the first car');
   assert.ok(liveEvents.some((e) => e.type === 'frame' && e.cars.length === 2));
   rcRows = [...rcRows, { t: liveNow - 1000, category: 'Flag', flag: 'GREEN', scope: 'Track', message: 'GREEN LIGHT' }];
-  liveNow += 4000; await live.tick(); await live.tick();
+  liveNow += 6000; await live.tick(); await live.tick();   // race control is polled every 5s when signed in
   const last = liveEvents.filter((e) => e.type === 'flag').at(-1); assert.deepStrictEqual([last.mode, last.pulseGreen], ['green', true]);
   failLoc = new O.OpenF1Error('rate', 'OpenF1 is rate limiting', 429, 9); const before = liveCalls.loc;
   liveNow += 5000; await live.tick(); assert.ok(liveEvents.some((e) => e.type === 'status' && /rate limiting/.test(e.error)));
@@ -137,7 +177,7 @@ const O = require('../openf1');
   /* ---------- manager: demo + stop; watcher only goes live inside the session window ---------- */
   const mEvents = [], alerts = [];
   let wall = Date.UTC(2026, 10, 1, 20, 31);
-  const mgr = createLiveManager({ fetchFn, getCreds: () => null, emit: (e) => mEvents.push(e), onAlert: (a) => alerts.push(a), clock: () => wall });
+  const mgr = createLiveManager({ fetchFn, getCreds: () => null, emit: (e) => mEvents.push(e), onAlert: (a) => alerts.push(a), clock: () => wall, limiter: nolimit });
   await mgr.watchOnce();
   assert.strictEqual(mgr.mode, 'live'); assert.deepStrictEqual(alerts.map((a) => a.title), ['F1 session live']); assert.ok(mEvents.some((e) => e.type === 'session' && e.feedMode === 'live' && !e.mode));
   wall = Date.UTC(2026, 10, 1, 23, 0); await mgr.watchOnce();
@@ -145,6 +185,33 @@ const O = require('../openf1');
   await mgr.demo(); assert.strictEqual(mgr.mode, 'demo'); assert.strictEqual(mgr.snapshot().feed.session.demo, true);
   assert.deepStrictEqual(Object.keys(mgr.snapshot().feed), ['session', 'drivers', 'speed', 'live', 'flag']);
   mgr.stop(); assert.strictEqual(mgr.mode, 'idle');
+
+  /* ---------- live is sponsor-only: say so, then pick the session up once its data is free ---------- */
+  {
+    const ev = [], al = [];
+    let w = Date.UTC(2026, 10, 1, 20, 31);
+    const gated = async (url) => {
+      const u = new URL(url);
+      if (u.pathname === '/v1/sessions') return res(200, [SESSION]);
+      return res(403, { detail: 'Sponsor only' });
+    };
+    const m = createLiveManager({ fetchFn: gated, getCreds: () => null, emit: (e) => ev.push(e), onAlert: (a) => al.push(a), clock: () => w, limiter: nolimit });
+    await m.watchOnce();
+    const g = ev.find((e) => e.type === 'gated');
+    assert.ok(g && /sponsor account/.test(g.error) && /9\.90/.test(g.error), 'explains what live costs');
+    assert.strictEqual(g.signedIn, false);
+    assert.strictEqual(m.mode, 'idle', 'does not sit in a broken live state');
+    ev.length = 0;
+    await m.watchOnce();
+    assert.ok(ev.some((e) => e.type === 'gated'), 'stays gated while the session runs');
+    assert.strictEqual(ev.filter((e) => e.type === 'session').length, 0, 'stops re-asking OpenF1 for live data');
+    w = Date.UTC(2026, 10, 1, 22, 31);           // session ended 22:00; its data is free 30 min later
+    ev.length = 0; await m.watchOnce();
+    assert.ok(ev.some((e) => e.type === 'ready' && e.session.name === 'Race'), 'offers the replay once it is free');
+    assert.deepStrictEqual(al.map((a) => a.title), ['Ready to replay']);
+    ev.length = 0; await m.watchOnce();
+    assert.ok(!ev.some((e) => e.type === 'ready'), 'only offers it once');
+  }
 
   console.log('f1 live tests passed');
   process.exit(0);
