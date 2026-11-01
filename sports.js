@@ -1,5 +1,5 @@
 'use strict';
-// Football (ESPN's public JSON, no key) and Formula 1 (Jolpica-F1 / Ergast-compatible, no key).
+// Football and basketball (ESPN's public JSON, no key) and Formula 1 (Jolpica-F1 / Ergast-compatible, no key).
 // Parsers are tolerant of missing fields; fetching/caching and the live-match watcher are injectable for tests.
 
 const { createApiFootball } = require('./apifootball');
@@ -400,8 +400,29 @@ class F1Reminders {
   }
 }
 
+/* ================= basketball (NBA, ESPN public JSON) ================= */
+const NBA_SCOREBOARD = `${ESPN}/site/v2/sports/basketball/nba/scoreboard`;
+const NBA_STANDINGS = `${ESPN}/v2/sports/basketball/nba/standings`;
+
+// Teams as the app stores them: enough to follow and to draw a row, nothing the renderer doesn't use.
+function nbaTeamOf(r) { return { id: String(r.id || ''), name: r.name || r.full || '?', full: r.full || r.name || '?', abbr: r.abbr || '', logo: r.logo || '' }; }
+
+function createBasketball({ fetchFn = globalThis.fetch, clock = Date.now } = {}) {
+  const cached = makeCache(clock);
+  // Games refresh every 45 s (scores move), standings every 30 min (they barely change).
+  const games = () => cached('nba:games', (v) => (v.error ? 30000 : 45000), async () => ({ games: parseScoreboard(await getJson(NBA_SCOREBOARD, fetchFn)), error: '', at: clock() }));
+  const table = () => cached('nba:table', (v) => (v.error ? 60000 : 30 * MIN), async () => ({ groups: parseStandings(await getJson(NBA_STANDINGS, fetchFn)), error: '', at: clock() }));
+  async function bundle() {
+    const [g, t] = await Promise.allSettled([games(), table()]);
+    const gv = g.status === 'fulfilled' ? g.value : { games: [], error: String(g.reason && g.reason.message || g.reason) };
+    const tv = t.status === 'fulfilled' ? t.value : { groups: [], error: String(t.reason && t.reason.message || t.reason) };
+    return { games: gv.games, groups: tv.groups, error: gv.error || tv.error, updated: clock() };
+  }
+  return { games, table, bundle, nbaTeamOf };
+}
+
 module.exports = {
-  LEAGUES, isLeague, getJson, makeCache, parseScoreboard, parseStandings, createFootball,
+  LEAGUES, isLeague, getJson, makeCache, parseScoreboard, parseStandings, createFootball, createBasketball, nbaTeamOf,
   parseSchedule, parseDriverStandings, parseConstructorStandings, parseLastResult, nextRace, nextSession, createF1,
   LiveWatcher, F1Reminders, f1Favourites,
 };

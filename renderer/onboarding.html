@@ -9,6 +9,9 @@
 <body class="ob">
   <svg class="sprite" width="0" height="0" aria-hidden="true">
     <defs>
+      <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 3h5M18 6.5l1.5-1.5"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="m8 12.3 2.6 2.6L16.2 9.3"/></symbol>
+      <symbol id="i-hoop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3.4 3 3.4 9.8 0 12.8M18.4 5.6c-3.4 3-3.4 9.8 0 12.8"/></symbol>
       <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="3.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
       <symbol id="i-ball" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8l3.4 2.5-1.3 4h-4.2l-1.3-4z"/><path d="M12 8V3.2M15.4 10.5l4.6-1.4M14.1 14.5l2.8 3.9M9.9 14.5l-2.8 3.9M8.6 10.5 4 9.1"/></symbol>
       <symbol id="i-flag" viewBox="0 0 24 24"><path d="M6 21V3.5"/><path d="M6 5c3-1.6 5 1.6 8 0s3.2-.6 4-1v9c-.8.4-1 .6-4 1.2s-5-1.8-8-.2"/></symbol>
@@ -31,10 +34,22 @@
         <h1>Welcome to Islet</h1>
         <p class="lead">A Dynamic Island for your PC. It lives at the top of your screen and brings your scores, music, calendar and alerts to one place. Setup takes about a minute, and every step is optional.</p>
         <div class="feats">
-          <div class="feat"><div class="fi glass"><svg><use href="#i-ball"/></svg></div><div><b>Football and F1</b><span>Live scores, kick-off and goal alerts, standings, race countdowns</span></div></div>
+          <div class="feat"><div class="fi glass"><svg><use href="#i-ball"/></svg></div><div><b>Football, F1 and NBA</b><span>Live scores, goal and kick-off alerts, standings, race countdowns</span></div></div>
           <div class="feat"><div class="fi glass"><svg><use href="#i-spotify"/></svg></div><div><b>Spotify and music</b><span>Now playing, controls, playlists, and your Windows media</span></div></div>
           <div class="feat"><div class="fi glass"><svg><use href="#i-spark"/></svg></div><div><b>Calendar and Claude Code</b><span>Next meeting with one-click Join, and Claude’s activity at a glance</span></div></div>
         </div>
+      </section>
+
+      <!-- 6: what do you want -->
+      <section class="ob-step" data-step="6">
+        <h2>What do you want on Islet?</h2>
+        <p>Pick what you’d like. Anything you leave off stays off, and you can change this anytime in Settings.</p>
+        <div class="mods">
+          <button class="mod on" data-mod="sports"><div class="fi glass"><svg><use href="#i-ball"/></svg></div><div><b>Sports</b><span>Football, F1 and NBA: scores, standings, race and live timing</span></div><span class="check">✓</span></button>
+          <button class="mod on" data-mod="focus"><div class="fi glass"><svg><use href="#i-timer"/></svg></div><div><b>Focus timer</b><span>Work and break blocks, with a pill on the island while you focus</span></div><span class="check">✓</span></button>
+          <button class="mod on" data-mod="tasks"><div class="fi glass"><svg><use href="#i-check"/></svg></div><div><b>Tasks</b><span>A checklist for today, kept on this PC</span></div><span class="check">✓</span></button>
+        </div>
+        <small class="dim mods-note">Music, calendar, clipboard and notifications stay on either way.</small>
       </section>
 
       <!-- 1: football -->
@@ -59,6 +74,13 @@
         <p>Pick up to 3 drivers and a team. They’re highlighted in the standings and shown on the Now tab.</p>
         <div class="pills" id="ob-teams-f1"></div>
         <div class="tiles three" id="ob-drivers"></div>
+      </section>
+
+      <!-- 7: NBA -->
+      <section class="ob-step" data-step="7">
+        <h2>Your NBA teams</h2>
+        <p>Follow up to 5 teams. Their games lead the NBA tab. Teams load from the standings, so this works without a key.</p>
+        <div class="tiles three" id="ob-nba"></div>
       </section>
 
       <!-- 3: spotify -->

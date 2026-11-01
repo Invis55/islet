@@ -37,6 +37,7 @@ const DEFAULTS = {
   footballLeague: 'eng.1', favTeams: [], footballAlerts: true, f1Alerts: true, favDrivers: [], favConstructor: '',
   apiFootballKey: '', spotifyClientId: '', onboarded: false,
   f1Ambient: true, f1CalmLights: false, f1LiveWatch: true,
+  modules: { sports: true, focus: true, tasks: true }, nbaTeams: [], quietFocus: true,
 };
 let settings = { ...DEFAULTS };
 const userFile = (n) => path.join(app.getPath('userData'), n);
@@ -44,7 +45,7 @@ const userFile = (n) => path.join(app.getPath('userData'), n);
 /* last known data, re-sent when a window (re)loads */
 let calState = { events: [], error: '', configured: false, updated: 0 };
 let notifState = { items: [], error: '', fresh: [] };
-let football = null, f1 = null, watcher = null, f1Reminders = null, sportsTimer = null;
+let football = null, f1 = null, watcher = null, f1Reminders = null, sportsTimer = null, basketball = null;
 let liveMatch = null;
 const summary = { fav: null, f1: null, f1fav: null };
 
@@ -62,6 +63,8 @@ function loadSettings() {
   if (settings.favTeam && !(settings.favTeams || []).length) settings.favTeams = [settings.favTeam]; // older versions followed one team
   delete settings.favTeam;
   if (!Array.isArray(settings.favTeams)) settings.favTeams = [];
+  if (!Array.isArray(settings.nbaTeams)) settings.nbaTeams = [];
+  settings.modules = { ...DEFAULTS.modules, ...(settings.modules && typeof settings.modules === 'object' ? settings.modules : {}) };
 }
 function persist() { try { fs.writeFileSync(userFile('settings.json'), JSON.stringify(settings)); } catch { /* ignore */ } }
 function saveSettings() {
@@ -292,11 +295,13 @@ function onLiveEvent(e) {
   send('f1live', e);
 }
 function startLive() {
-  live = createLiveManager({
-    fetchFn: (u, o) => net.fetch(u, o), getCreds: loadOpenF1Creds, emit: onLiveEvent,
-    onAlert: (a) => { if (settings.f1Alerts) send('alert', { ...a, duration: 6000 }); },
-  });
-  if (settings.f1LiveWatch) live.startWatch();
+  if (!live) {
+    live = createLiveManager({
+      fetchFn: (u, o) => net.fetch(u, o), getCreds: loadOpenF1Creds, emit: onLiveEvent,
+      onAlert: (a) => { if (settings.f1Alerts) send('alert', { ...a, duration: 6000 }); },
+    });
+  }
+  if (settings.f1LiveWatch && settings.modules.sports) live.startWatch();
 }
 ipcMain.handle('f1live-do', async (_e, cmd) => {
   if (!live || !cmd || typeof cmd.a !== 'string') return { ok: false };
@@ -325,11 +330,40 @@ ipcMain.handle('f1live-login', async (_e, c) => {
 });
 ipcMain.handle('f1live-logout', () => { saveOpenF1Creds(null); if (live) live.auth.forget(); broadcast('settings', publicSettings()); return { ok: true }; });
 
+/* ---------- basketball (NBA) ---------- */
+const MAX_NBA = 5;
+function cleanNbaTeam(t) {
+  if (!t || typeof t.id !== 'string' || !t.id || t.id.length > 12) return null;
+  return {
+    id: t.id, name: str(t.name, 60), full: str(t.full || t.name, 80), abbr: str(t.abbr, 5),
+    logo: /^https:\/\/a\.espncdn\.com\//.test(t.logo || '') ? t.logo : '',
+  };
+}
+ipcMain.handle('nba-get', () => (basketball && settings.modules.sports
+  ? basketball.bundle().then((b) => ({ ...b, favs: settings.nbaTeams.map((t) => t.id) }))
+  : { disabled: true, games: [], groups: [], error: '', favs: [] }));
+
+/* ---------- tasks (a plain checklist, kept on this PC) ---------- */
+function cleanTasks(list) {
+  if (!Array.isArray(list)) return null;
+  return list.slice(0, 200).filter((t) => t && typeof t.id === 'string' && t.id.length <= 40)
+    .map((t) => ({ id: t.id, text: str(t.text, 200).trim(), done: !!t.done })).filter((t) => t.text);
+}
+function loadTasks() { try { return cleanTasks(JSON.parse(fs.readFileSync(userFile('tasks.json'), 'utf8'))) || []; } catch { return []; } }
+ipcMain.handle('tasks-load', () => loadTasks());
+ipcMain.handle('tasks-save', (_e, list) => {
+  const c = cleanTasks(list);
+  if (!c) return { ok: false };
+  try { fs.writeFileSync(userFile('tasks.json'), JSON.stringify(c)); return { ok: true }; } catch { return { ok: false }; }
+});
+
 /* ---------- football + F1 ---------- */
 function startSports() {
+  if (sportsTimer) return;                           // already running
   const fetchFn = (u, o) => net.fetch(u, o);
   football = sports.createFootball({ fetchFn, getKey: () => settings.apiFootballKey });
   f1 = sports.createF1({ fetchFn });
+  basketball = sports.createBasketball({ fetchFn });
   watcher = new sports.LiveWatcher({
     football, getSettings: () => settings,
     notify: (a) => send('alert', a),
@@ -340,7 +374,13 @@ function startSports() {
   sportsTimer = setInterval(sportsTick, 30000);
   sportsTick();
 }
+function stopSports() {
+  clearInterval(sportsTimer); sportsTimer = null;
+  liveMatch = null; summary.fav = null; summary.f1 = null; summary.f1fav = null;
+  send('live', null); send('summary', summary);
+}
 async function sportsTick() {
+  if (!settings.modules.sports || !watcher) return;
   try { await watcher.tick(); } catch { /* network hiccup: try again next tick */ }
   try {
     const races = await f1.schedule();
@@ -357,8 +397,8 @@ async function sportsTick() {
   send('summary', summary);
 }
 const asError = (league) => (e) => ({ league, error: e.message || String(e), fixtures: [], table: [], source: '', quota: {} });
-ipcMain.handle('football-get', (_e, league) => football.bundle(String(league)).then((b) => annotate(b, settings.favTeams)).catch(asError(String(league))));
-ipcMain.handle('f1-get', () => f1.bundle().catch((e) => ({ error: e.message || String(e), races: [], drivers: { rows: [] }, teams: { rows: [] }, last: null })));
+ipcMain.handle('football-get', (_e, league) => (football && settings.modules.sports ? football.bundle(String(league)).then((b) => annotate(b, settings.favTeams)).catch(asError(String(league))) : { disabled: true, league: String(league), fixtures: [], table: [], error: '' }));
+ipcMain.handle('f1-get', () => (f1 && settings.modules.sports ? f1.bundle().catch((e) => ({ error: e.message || String(e), races: [], drivers: { rows: [] }, teams: { rows: [] }, last: null })) : { disabled: true, races: [], drivers: { rows: [] }, teams: { rows: [] }, last: null, error: '' }));
 
 /* ---------- Claude Code connection ---------- */
 const hookScript = () => path.join(__dirname, 'hook.ps1');
@@ -413,7 +453,7 @@ function cleanTeam(t) {
 
 function update(patch) {
   const prevIcs = settings.icsUrl, prevKey = settings.apiFootballKey;
-  for (const k of ['notch', 'musicPill', 'sound', 'popupFromNotifs', 'clipboard', 'footballAlerts', 'f1Alerts', 'f1Ambient', 'f1CalmLights', 'f1LiveWatch']) if (typeof patch[k] === 'boolean') settings[k] = patch[k];
+  for (const k of ['notch', 'musicPill', 'sound', 'popupFromNotifs', 'clipboard', 'footballAlerts', 'f1Alerts', 'f1Ambient', 'f1CalmLights', 'f1LiveWatch', 'quietFocus']) if (typeof patch[k] === 'boolean') settings[k] = patch[k];
   if (typeof patch.icsUrl === 'string') settings.icsUrl = patch.icsUrl.trim().slice(0, 2000);
   if (typeof patch.footballLeague === 'string' && sports.isLeague(patch.footballLeague)) settings.footballLeague = patch.footballLeague;
   if (typeof patch.apiFootballKey === 'string') {
@@ -426,6 +466,22 @@ function update(patch) {
   }
   if (typeof patch.onboarded === 'boolean') settings.onboarded = patch.onboarded;
 
+  if (patch.modules && typeof patch.modules === 'object') {
+    const was = settings.modules.sports;
+    for (const k of ['sports', 'focus', 'tasks']) if (typeof patch.modules[k] === 'boolean') settings.modules[k] = patch.modules[k];
+    if (settings.modules.sports !== was) {
+      if (settings.modules.sports) { startSports(); startLive(); }
+      else { stopSports(); if (live) { live.stopWatch(); live.stop(); } }
+    }
+  }
+  if (patch.toggleNbaTeam) {
+    const t = cleanNbaTeam(patch.toggleNbaTeam);
+    if (t) {
+      if (settings.nbaTeams.some((x) => x.id === t.id)) settings.nbaTeams = settings.nbaTeams.filter((x) => x.id !== t.id);
+      else if (settings.nbaTeams.length < MAX_NBA) settings.nbaTeams = [...settings.nbaTeams, t];
+      else send('alert', { title: `Up to ${MAX_NBA} NBA teams`, body: 'Unfollow one to add another', icon: '🏀', duration: 3500 });
+    }
+  }
   let favChanged = false, f1Changed = false;
   if (patch.clearFavTeams) { settings.favTeams = []; favChanged = true; }
   if (patch.toggleFavTeam) {
@@ -451,7 +507,7 @@ function update(patch) {
   saveSettings();
   if (!settings.f1Ambient) ambientSet({ mode: 'off' });
   else if (live && liveCache.flag) ambientFor(liveCache.flag, false);
-  if (live) { if (settings.f1LiveWatch) live.startWatch(); else live.stopWatch(); }
+  if (live) { if (settings.f1LiveWatch && settings.modules.sports) live.startWatch(); else live.stopWatch(); }
   if (settings.icsUrl !== prevIcs) refreshCalendar();
   if (settings.apiFootballKey !== prevKey && football) { football.clear(); favChanged = true; }
   if (favChanged && watcher) {
@@ -518,8 +574,7 @@ app.whenReady().then(() => {
   startBridge();
   startMedia();
   startNotifications();
-  startSports();
-  startLive();
+  if (settings.modules.sports) { startSports(); startLive(); }
   buildTray();
   // Ctrl+Alt+I pins the island open / closed from anywhere
   try { globalShortcut.register('CommandOrControl+Alt+I', () => send('toggle-pin')); } catch { /* shortcut taken by another app */ }

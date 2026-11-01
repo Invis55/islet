@@ -89,3 +89,14 @@ details.more small { display: block; font-size: 10.5px; color: var(--label3); li
 .ob-foot .spacer { flex: 1; }
 .pill.big { padding: 10px 26px; font-size: 14px; }
 #ob-back[hidden], #ob-skip[hidden] { display: none; }
+
+/* what-do-you-want step */
+.mods { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+.mod { display: flex; align-items: center; gap: 14px; padding: 13px 16px; border-radius: 20px; background: var(--fill); border: 1.5px solid transparent; color: inherit; text-align: left; cursor: pointer; font: inherit; transition: background .2s ease, border-color .2s ease; }
+.mod:hover { background: rgba(255, 255, 255, .12); }
+.mod b { display: block; font-size: 14px; font-weight: 600; }
+.mod span:not(.check) { display: block; font-size: 12.5px; color: var(--label2); margin-top: 2px; }
+.mod.on { border-color: var(--blue); background: color-mix(in srgb, var(--blue) 18%, transparent); }
+.mod .check { margin-left: auto; flex: none; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, .3); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: transparent; }
+.mod.on .check { background: var(--blue); border-color: var(--blue); color: #fff; }
+.mods-note { display: block; margin-top: 14px; text-align: center; }

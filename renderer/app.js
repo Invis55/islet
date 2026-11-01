@@ -35,6 +35,7 @@ function resolveState() {
   if (currentAlert) return 'alert';
   if (panelWanted()) return 'panel';
   if (flag) return 'flag';
+  if (window.Focus && window.Focus.active()) return 'focus';
   if (claude) return 'claude';
   if (live && settings.favTeam) return 'match';
   if (media.active && media.playing && settings.musicPill) return 'music-compact';
@@ -191,7 +192,7 @@ function pushAlert(a) {
   alertQueue.push(a);
   if (!currentAlert && !panelWanted()) nextAlert(); // wait until you've finished with the panel
 }
-window.islet.onAlert(pushAlert);
+window.islet.onAlert((a) => { if (window.Focus && window.Focus.hold(a)) return; pushAlert(a); });
 
 /* ---------- Claude Code ---------- */
 function touchClaude() {

@@ -265,6 +265,23 @@ const last = (ch) => [...sent].reverse().find((s) => s[0] === ch);
   await ipcHandle['f1live-do']({}, { a: 'stop' });
   assert.strictEqual(last('f1live')[1].type, 'stopped');
 
+  // productivity + modules: tasks are validated and round-trip; switching Sports off stops its data
+  assert.deepStrictEqual(await ipcHandle['tasks-load'](), []);
+  assert.deepStrictEqual(await ipcHandle['tasks-save']({}, 'nope'), { ok: false });
+  assert.deepStrictEqual(await ipcHandle['tasks-save']({}, [{ id: 'a', text: '  Ship it  ', done: true }, { id: 'b', text: '   ' }, { text: 'no id' }, { id: 'c', text: 'x'.repeat(500) }]), { ok: true });
+  const saved = await ipcHandle['tasks-load']();
+  assert.deepStrictEqual(saved.map((x) => x.id), ['a', 'c'], 'empty and id-less tasks are dropped');
+  assert.strictEqual(saved[0].text, 'Ship it'); assert.strictEqual(saved[1].text.length, 200, 'text is capped');
+  assert.deepStrictEqual(await ipcHandle['nba-get'](), { ...(await ipcHandle['nba-get']()), favs: [] }, 'nba-get answers');
+  ipcOn['settings-update']({}, { toggleNbaTeam: { id: '17', name: 'Nets', full: 'Brooklyn Nets', abbr: 'BKN', logo: 'https://evil.example/x.png' } });
+  assert.strictEqual(last('settings')[1].nbaTeams.length, 1); assert.strictEqual(last('settings')[1].nbaTeams[0].logo, '', 'logo host is checked');
+  ipcOn['settings-update']({}, { toggleNbaTeam: { id: '17' } }); assert.strictEqual(last('settings')[1].nbaTeams.length, 0, 'toggling again unfollows');
+  ipcOn['settings-update']({}, { modules: { sports: false, focus: 'yes' } });
+  assert.strictEqual(last('settings')[1].modules.sports, false); assert.strictEqual(last('settings')[1].modules.focus, true, 'non-boolean ignored');
+  assert.deepStrictEqual(await ipcHandle['nba-get'](), { disabled: true, games: [], groups: [], error: '', favs: [] }, 'off means no NBA request');
+  assert.deepStrictEqual(await ipcHandle['football-get']({}, 'eng.1'), { disabled: true, league: 'eng.1', fixtures: [], table: [], error: '' });
+  ipcOn['settings-update']({}, { modules: { sports: true } });
+
   // alert API still reaches the renderer
   await new Promise((resolve) => {
     const r = http.request({ host: '127.0.0.1', port: 47998, path: '/notify', method: 'POST' }, (res) => { res.resume(); res.on('end', resolve); });

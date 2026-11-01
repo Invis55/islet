@@ -31,6 +31,9 @@ Hover the notch (it swells, then opens) or click it to pin it open. Click the gr
 | **Spotify** | Seek, like, shuffle, repeat, volume, switch device, start a playlist |
 | **Football** | Fixtures, live scores and tables for the Premier League, La Liga, Serie A, Bundesliga, Ligue 1, Champions League, Europa League, MLS and Saudi Pro League |
 | **F1** | Next race countdown, every session in your local time, standings, last result |
+| **Tasks** | A checklist for today: add, tick off, double-click to rename, clear what's done. Kept on this PC |
+| **Focus** | Pomodoro timer (15/3, 25/5 or 50/10). The island shows a pill while a block runs, and you get a break alert. Non-urgent alerts during a work block are held and summarised at the break (switch off in Alerts) |
+| **NBA** | Today's games with live scores (your teams first), conference standings, and a team picker for up to five teams |
 | **Live** | Live F1: a real track map with every car moving on it, the running order with gaps, the current flag, and race-control messages. Replay the last race, jump to the next flag, or run the built-in demo |
 
 ## Live F1 and ambient flag lights
@@ -54,6 +57,10 @@ Track status also drives a glow along the top edge of your screen, plus a pill o
 | Chequered | checker bars, then fades | |
 
 Settings → Appearance has **F1 ambient light** (off to disable) and **Calm lights** (steady glow, no flashing, for anyone sensitive to flicker). The light never takes mouse clicks. Try the **Demo** button in the Live tab to see every state.
+
+## Choosing what you use
+
+Sports, the focus timer and tasks are switched on or off in Settings → Features, and you choose them during setup. Turning a module off hides its tabs and stops its data: no sports requests are made while Sports is off. Music, calendar, clipboard, notes and notifications always stay on.
 
 ## Football data
 Islet uses **API-Football** when you add a key (Settings → Football data), and **ESPN's public feed** otherwise (no key needed).

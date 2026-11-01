@@ -22,6 +22,9 @@
       <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M4 11V9.5A2.5 2.5 0 0 1 6.5 7H19"/><path d="m16.5 4 3 3-3 3"/><path d="M20 13v1.5a2.5 2.5 0 0 1-2.5 2.5H5"/><path d="m7.5 20-3-3 3-3"/></symbol>
       <symbol id="i-heart" viewBox="0 0 24 24"><path d="M12 20.5s-8-4.7-8-10.6A4.4 4.4 0 0 1 12 7.2a4.4 4.4 0 0 1 8 2.7c0 5.9-8 10.6-8 10.6z"/></symbol>
       <symbol id="i-speaker" viewBox="0 0 24 24"><path d="M4 9.5h3l4-3.5v12l-4-3.5H4z"/><path d="M15 9a4 4 0 0 1 0 6M17.5 6.5a7.5 7.5 0 0 1 0 11"/></symbol>
+      <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 13.5V9.5M9.5 3h5M18 6.5l1.5-1.5"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><path d="m8 12.3 2.6 2.6L16.2 9.3"/></symbol>
+      <symbol id="i-hoop" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3v18M5.6 5.6c3.4 3 3.4 9.8 0 12.8M18.4 5.6c-3.4 3-3.4 9.8 0 12.8"/></symbol>
       <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h8M18 7h2M4 12h2M12 12h8M4 17h9M19 17h1"/><circle cx="15" cy="7" r="2.2"/><circle cx="9" cy="12" r="2.2"/><circle cx="16" cy="17" r="2.2"/></symbol>
     </defs>
   </svg>
@@ -48,6 +51,13 @@
         <span class="fl-sign" id="fl-sign">SC</span>
         <span class="fl-label ellipsis" id="fl-label">SAFETY CAR</span>
         <span class="fl-lap" id="fl-lap"></span>
+      </div>
+
+      <!-- compact: focus timer -->
+      <div class="view" data-view="focus">
+        <span class="fo-dot" id="fo-dot"></span>
+        <span class="fo-time" id="fo-time">25:00</span>
+        <span class="fo-label" id="fo-label">Focus</span>
       </div>
 
       <!-- alert -->
@@ -86,10 +96,13 @@
             <button class="tab" data-tab="alerts"><svg><use href="#i-bell"/></svg><span>Alerts</span><i class="badge" id="alerts-badge" hidden></i></button>
             <button class="tab" data-tab="clipboard"><svg><use href="#i-clip"/></svg><span>Clipboard</span></button>
             <button class="tab" data-tab="notes"><svg><use href="#i-note"/></svg><span>Notes</span></button>
+            <button class="tab mod-tasks" data-tab="tasks"><svg><use href="#i-check"/></svg><span>Tasks</span></button>
+            <button class="tab mod-focus" data-tab="focus"><svg><use href="#i-timer"/></svg><span>Focus</span></button>
             <button class="tab" data-tab="spotify"><svg><use href="#i-spotify"/></svg><span>Spotify</span></button>
-            <button class="tab" data-tab="football"><svg><use href="#i-ball"/></svg><span>Football</span></button>
-            <button class="tab" data-tab="f1"><svg><use href="#i-flag"/></svg><span>F1</span></button>
-            <button class="tab" data-tab="live"><svg><use href="#i-pulse"/></svg><span>Live</span><i class="badge livedot" id="live-dot" hidden></i></button>
+            <button class="tab mod-sports" data-tab="football"><svg><use href="#i-ball"/></svg><span>Football</span></button>
+            <button class="tab mod-sports" data-tab="f1"><svg><use href="#i-flag"/></svg><span>F1</span></button>
+            <button class="tab mod-sports" data-tab="live"><svg><use href="#i-pulse"/></svg><span>Live</span><i class="badge livedot" id="live-dot" hidden></i></button>
+            <button class="tab mod-sports" data-tab="basketball"><svg><use href="#i-hoop"/></svg><span>NBA</span></button>
           </nav>
           <span class="spacer"></span>
           <span id="clock-time"></span>
@@ -134,7 +147,7 @@
                 <button id="meet-join" class="join glass prom" hidden>Join</button>
               </div>
             </div>
-            <div class="chips">
+            <div class="chips" id="now-sports">
               <div class="chip glass grow" id="chip-fav"><svg class="ic"><use href="#i-ball"/></svg><span id="fav-text" class="ellipsis">Follow a team in the Football tab</span></div>
               <div class="chip glass grow" id="chip-f1"><svg class="ic"><use href="#i-flag"/></svg><span id="f1-chip-text" class="ellipsis">Next F1 session</span></div>
             </div>
@@ -254,9 +267,59 @@
             <div class="foot"><span class="ellipsis" id="lv-ticker"></span><span class="ellipsis" id="lv-status"></span></div>
           </section>
 
+          <!-- TASKS -->
+          <section class="page" data-page="tasks">
+            <div class="task-add">
+              <input id="tk-input" type="text" placeholder="Add a task and press Enter" maxlength="200" spellcheck="false" />
+              <button class="pill glass prom" id="tk-add">Add</button>
+            </div>
+            <div class="subbar"><span class="dim" id="tk-count"></span><button class="link" id="tk-clear">Clear done</button></div>
+            <div class="list" id="tk-list"></div>
+          </section>
+
+          <!-- FOCUS -->
+          <section class="page" data-page="focus">
+            <div class="focus-wrap">
+              <div class="fo-phase" id="fo-phase">Focus</div>
+              <div class="fo-big" id="fo-big">25:00</div>
+              <div class="seg glass" id="fo-presets">
+                <button data-w="15" data-b="3">15 / 3</button>
+                <button data-w="25" data-b="5" class="on">25 / 5</button>
+                <button data-w="50" data-b="10">50 / 10</button>
+              </div>
+              <div class="fo-ctl">
+                <button class="pill glass" id="fo-reset">Reset</button>
+                <button class="pill glass prom big" id="fo-go">Start</button>
+                <button class="pill glass" id="fo-skip">Skip</button>
+              </div>
+              <div class="dim" id="fo-count"></div>
+            </div>
+          </section>
+
+          <!-- NBA -->
+          <section class="page" data-page="basketball">
+            <div class="subbar">
+              <div class="seg glass wide">
+                <button data-nbaview="today" class="on">Games</button>
+                <button data-nbaview="standings">Standings</button>
+                <button data-nbaview="teams">Teams</button>
+              </div>
+              <span class="dim" id="nba-season"></span>
+            </div>
+            <div class="list" id="nba-list"></div>
+            <div class="foot"><span id="nba-status"></span><button class="link" id="nba-refresh">↻ Refresh</button></div>
+          </section>
+
           <!-- SETTINGS -->
           <section class="page" data-page="settings">
             <div class="list settings">
+              <div class="group-title">Features</div>
+              <div class="group">
+                <label class="item"><span class="lbl">Sports: football, F1, NBA and live timing</span><input type="checkbox" class="switch" id="set-mod-sports" /></label>
+                <label class="item"><span class="lbl">Focus timer</span><input type="checkbox" class="switch" id="set-mod-focus" /></label>
+                <label class="item"><span class="lbl">Tasks</span><input type="checkbox" class="switch" id="set-mod-tasks" /></label>
+              </div>
+
               <div class="group-title">Connections</div>
               <div class="group">
                 <div class="item stack">
@@ -310,6 +373,7 @@
                 <label class="item"><span class="lbl">F1: go live automatically during a session</span><input type="checkbox" class="switch" id="set-f1LiveWatch" /></label>
                 <label class="item"><span class="lbl">Show Windows notifications as pop-ups</span><input type="checkbox" class="switch" id="set-popupFromNotifs" /></label>
                 <label class="item"><span class="lbl">Alert sounds</span><input type="checkbox" class="switch" id="set-sound" /></label>
+                <label class="item"><span class="lbl">Hold alerts during focus blocks, then summarise them</span><input type="checkbox" class="switch" id="set-quietFocus" /></label>
               </div>
 
               <div class="group-title">Appearance</div>
@@ -340,5 +404,9 @@
   <script src="sports.js"></script>
   <script src="spotify.js"></script>
   <script src="f1live.js"></script>
+  <script src="basketball.js"></script>
+  <script src="focus.js"></script>
+  <script src="tasks.js"></script>
+  <script src="modules.js"></script>
 </body>
 </html>

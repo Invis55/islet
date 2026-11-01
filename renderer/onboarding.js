@@ -1,4 +1,5 @@
-// First-run setup wizard. Every step is optional; choices are saved as you make them.
+// First-run setup. Every step is optional; choices are saved as you make them.
+// Steps are shown in sequence; the sports steps only appear when Sports is switched on.
 // All text from the network is set with textContent only.
 (() => {
   const $ = (id) => document.getElementById(id);
@@ -11,35 +12,58 @@
   const TEAM_COLORS = [[/red bull/i, '#3671C6'], [/ferrari/i, '#E8002D'], [/mercedes/i, '#27F4D2'], [/mclaren/i, '#FF8000'], [/aston/i, '#229971'], [/alpine/i, '#FF87BC'],
     [/williams/i, '#64C4FF'], [/\brb\b|racing bulls|alphatauri|toro/i, '#6692FF'], [/haas/i, '#B6BABD'], [/sauber|audi|alfa/i, '#52E252'], [/cadillac/i, '#C0C0C8']];
   const teamColor = (n) => (TEAM_COLORS.find(([re]) => re.test(n || '')) || [0, '#888'])[1];
-  const STEPS = 6;
+
+  // step ids (the data-step attributes) in the order they appear
+  const SPORTS_SEQ = [0, 6, 1, 2, 7, 3, 4, 5];
+  const NO_SPORTS_SEQ = [0, 6, 3, 4, 5];
+  const seq = () => (settings.modules && settings.modules.sports === false ? NO_SPORTS_SEQ : SPORTS_SEQ);
 
   let step = 0;
-  let settings = { favTeams: [], favDrivers: [], favConstructor: '' };
+  let settings = { favTeams: [], favDrivers: [], favConstructor: '', nbaTeams: [], modules: { sports: true, focus: true, tasks: true } };
   let league = 'eng.1';
   const fbData = {};
   let f1Data = null;
+  let nbaData = null;
   let spStatus = { hasClient: false, connected: false, redirectUri: '' };
   let ccConnected = false;
 
   /* ---------- navigation ---------- */
   function show(n) {
-    step = Math.max(0, Math.min(STEPS - 1, n));
-    document.querySelectorAll('.ob-step').forEach((s) => s.classList.toggle('on', Number(s.dataset.step) === step));
+    const order = seq();
+    step = Math.max(0, Math.min(order.length - 1, n));
+    const id = order[step];
+    document.querySelectorAll('.ob-step').forEach((s) => s.classList.toggle('on', Number(s.dataset.step) === id));
     const dots = $('dots'); clear(dots);
-    for (let i = 0; i < STEPS; i++) dots.append(el('i', i === step ? 'on' : i < step ? 'done' : ''));
+    for (let i = 0; i < order.length; i++) dots.append(el('i', i === step ? 'on' : i < step ? 'done' : ''));
+    const last = step === order.length - 1;
     $('ob-back').hidden = step === 0;
-    $('ob-skip').hidden = step === STEPS - 1;
-    $('ob-next').textContent = step === 0 ? 'Get started' : step === STEPS - 1 ? 'Start using Islet' : 'Continue';
-    if (step === 1) { buildLeagues(); loadFootball(); }
-    if (step === 2) loadF1();
-    if (step === 3) refreshSpotify();
-    if (step === 4) { refreshClaude(); syncSwitches(); }
-    if (step === 5) renderSummary();
+    $('ob-skip').hidden = last;
+    $('ob-next').textContent = step === 0 ? 'Get started' : last ? 'Start using Islet' : 'Continue';
+    if (id === 1) { buildLeagues(); loadFootball(); }
+    if (id === 2) loadF1();
+    if (id === 7) loadNba();
+    if (id === 3) refreshSpotify();
+    if (id === 4) { refreshClaude(); syncSwitches(); }
+    if (id === 5) renderSummary();
+    if (id === 6) syncModules();
   }
-  $('ob-next').addEventListener('click', () => { if (step === STEPS - 1) api.onboardingDone(); else show(step + 1); });
+  $('ob-next').addEventListener('click', () => { if (step === seq().length - 1) api.onboardingDone(); else show(step + 1); });
   $('ob-back').addEventListener('click', () => show(step - 1));
   $('ob-skip').addEventListener('click', () => api.onboardingDone());
   $('ob-close').addEventListener('click', () => api.closeWindow());
+
+  /* ---------- what do you want ---------- */
+  function syncModules() {
+    const m = settings.modules || {};
+    document.querySelectorAll('.mod[data-mod]').forEach((b) => b.classList.toggle('on', m[b.dataset.mod] !== false));
+  }
+  document.querySelectorAll('.mod[data-mod]').forEach((b) => b.addEventListener('click', () => {
+    const name = b.dataset.mod;
+    const on = !(settings.modules && settings.modules[name] !== false);
+    settings = { ...settings, modules: { ...settings.modules, [name]: on } };
+    b.classList.toggle('on', on);
+    api.updateSettings({ modules: { [name]: on } });
+  }));
 
   /* ---------- football ---------- */
   function buildLeagues() {
@@ -105,6 +129,27 @@
     }
   }
 
+  /* ---------- NBA ---------- */
+  async function loadNba() {
+    const box = $('ob-nba'); clear(box);
+    box.append(el('div', 'empty-ob', 'Loading teams…'));
+    try { nbaData = await api.nbaGet(); } catch { nbaData = { groups: [], error: 'offline' }; }
+    renderNba();
+  }
+  function renderNba() {
+    const box = $('ob-nba'); clear(box);
+    const rows = nbaData && nbaData.groups ? nbaData.groups.flatMap((g) => g.rows) : [];
+    if (!rows.length) { box.append(el('div', 'empty-ob', 'Couldn’t load teams yet. You can pick them later in the NBA tab.')); return; }
+    const mine = new Set((settings.nbaTeams || []).map((t) => t.id));
+    for (const r of rows) {
+      const b = el('button', 'tile' + (mine.has(r.id) ? ' on' : ''));
+      const img = el('img', 'crest'); if (r.logo) img.src = r.logo; img.alt = ''; img.draggable = false; img.addEventListener('error', () => { img.style.visibility = 'hidden'; });
+      b.append(img, el('span', 'nm', r.full || r.name), el('span', 'check', '✓'));
+      b.addEventListener('click', () => api.updateSettings({ toggleNbaTeam: { id: r.id, name: r.name, full: r.full, abbr: r.abbr, logo: r.logo } }));
+      box.append(b);
+    }
+  }
+
   /* ---------- Spotify ---------- */
   async function refreshSpotify() {
     spStatus = await api.spotifyStatus();
@@ -159,10 +204,17 @@
   }
   function renderSummary() {
     const box = $('ob-summary'); clear(box);
-    const teams = settings.favTeams || [];
-    box.append(sumRow('i-ball', 'Football', teams.length ? teams.map((t) => t.name).join(', ') : 'No teams followed. Add some anytime from the Football tab.', teams.length > 0));
-    const drivers = settings.favDrivers || [];
-    box.append(sumRow('i-flag', 'Formula 1', drivers.length || settings.favConstructor ? [...drivers, settings.favConstructor].filter(Boolean).join(', ') : 'Race countdowns and standings, no favourites picked.', !!(drivers.length || settings.favConstructor)));
+    const m = settings.modules || {};
+    if (m.sports !== false) {
+      const teams = settings.favTeams || [];
+      box.append(sumRow('i-ball', 'Football', teams.length ? teams.map((t) => t.name).join(', ') : 'No teams followed. Add some anytime from the Football tab.', teams.length > 0));
+      const drivers = settings.favDrivers || [];
+      box.append(sumRow('i-flag', 'Formula 1', drivers.length || settings.favConstructor ? [...drivers, settings.favConstructor].filter(Boolean).join(', ') : 'Race countdowns and standings, no favourites picked.', !!(drivers.length || settings.favConstructor)));
+      const nba = settings.nbaTeams || [];
+      box.append(sumRow('i-hoop', 'NBA', nba.length ? nba.map((t) => t.name).join(', ') : 'Scores and standings. Pick teams anytime in the NBA tab.', nba.length > 0));
+    }
+    if (m.focus !== false) box.append(sumRow('i-timer', 'Focus timer', 'Work and break blocks, with a pill on the island', true));
+    if (m.tasks !== false) box.append(sumRow('i-check', 'Tasks', 'A checklist for today', true));
     box.append(sumRow('i-spotify', 'Spotify', spStatus.connected ? 'Connected' : 'Not connected. You can do it later in Settings.', spStatus.connected));
     box.append(sumRow('i-calendar', 'Calendar', settings.icsUrl ? 'Linked' : 'Not linked. Add a link in Settings for meetings and Join buttons.', !!settings.icsUrl));
     box.append(sumRow('i-spark', 'Claude Code', ccConnected ? 'Connected' : 'Not connected', ccConnected));
@@ -170,13 +222,16 @@
 
   /* ---------- live settings ---------- */
   api.onSettings((s) => {
-    settings = { favTeams: [], favDrivers: [], favConstructor: '', ...s };
+    settings = { favTeams: [], favDrivers: [], favConstructor: '', nbaTeams: [], ...s, modules: { sports: true, focus: true, tasks: true, ...(s.modules || {}) } };
     for (const k of Object.keys(fbData)) delete fbData[k].at; // re-annotate (served from the app's cache, no extra API calls)
-    if (step === 1) { renderTeams(); loadFootball(true); $('ob-afstatus').textContent = settings.apiFootballKeySet ? `Key saved (…${settings.apiFootballKeyTail}).` : ''; }
-    if (step === 2 && f1Data) renderF1();
-    if (step === 3) refreshSpotify();
-    if (step === 4) syncSwitches();
-    if (step === 5) renderSummary();
+    const id = seq()[step];
+    if (id === 1) { renderTeams(); loadFootball(true); $('ob-afstatus').textContent = settings.apiFootballKeySet ? `Key saved (…${settings.apiFootballKeyTail}).` : ''; }
+    if (id === 2 && f1Data) renderF1();
+    if (id === 7) renderNba();
+    if (id === 3) refreshSpotify();
+    if (id === 4) syncSwitches();
+    if (id === 5) renderSummary();
+    if (id === 6) syncModules();
   });
 
   show(0);
