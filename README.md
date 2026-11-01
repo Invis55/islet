@@ -3,7 +3,7 @@
 A Dynamic Island for Windows 11. A notch docked to the top of your screen that grows into live scores, music, alerts and a tabbed panel, styled after the iPhone Dynamic Island and Apple's Liquid Glass design.
 
 ## Install
-**From a release (easiest):** open the repo's *Releases* page, download `Islet-Setup-<version>.exe` and run it. The first launch walks you through setup.
+**From a release (easiest, about 10 seconds):** download `Islet-Setup.exe` from the repo's *Releases* page (always at `/releases/latest/download/Islet-Setup.exe`) and run it. It installs in one click and the first launch walks you through setup. Every push to `main` rebuilds and republishes it on GitHub, so there's nothing to build on your PC.
 
 **From source:** `npm install`, then `npm start`. `npm run dist` builds the installer into `dist/`.
 
@@ -60,7 +60,7 @@ Glass only on controls and navigation (tab bar, buttons, chips, segmented contro
 Type is **Inter** (bundled, SIL Open Font License, `renderer/fonts/LICENSE-Inter.txt`), the closest open match to San Francisco, which Apple doesn't license for Windows apps.
 
 ## Development
-`npm test` runs the automated tests (no Electron or Windows needed). Pushing a tag like `v0.5.0` makes GitHub Actions run the tests, build `Islet-Setup-<version>.exe` on a Windows runner and attach it to a Release.
+`npm test` runs the automated tests (no Electron or Windows needed). Every push to `main` makes GitHub Actions run the tests, build `Islet-Setup.exe` on a Windows runner and publish it to a Release for the version in `package.json` (bump it for a new release).
 
 ## Known limits
 - Developed without a Windows machine to hand: the logic and UI are covered by tests and screenshots, but these can only be proven on Windows: the media bridge (`media.ps1`), the notification reader (`notifications.ps1`), the Claude Code hook (`hook.ps1`), the live football/F1/Spotify services, and dragging a screenshot out of the panel. Errors show in the relevant tab.
